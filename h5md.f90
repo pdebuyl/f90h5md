@@ -16,6 +16,10 @@ module h5md
 contains
 
   ! opens a h5md file
+  ! creates the '/h5md' group and gives it the attributes 'creator' and 
+  ! 'version'. currently, only supports creating a new file.
+  ! file_id is the returned hdf5 location of the file
+  ! filename is the name of the file
   ! prog_name is the name that appears in the 'creator' global attribute
   subroutine h5md_open_file(file_id, filename, prog_name)
     integer(HID_T), intent(out) :: file_id
