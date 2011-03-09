@@ -30,8 +30,8 @@ contains
 
     call h5gcreate_f(file_id, 'h5md', h5_g_id, h5_error)
 
+    call h5screate_f(H5S_SCALAR_F, a_space, h5_error)
     a_size(1) = len(prog_name)
-    call h5screate_simple_f(1, a_size, a_space, h5_error)
     call h5tcopy_f(H5T_NATIVE_CHARACTER, a_type, h5_error)
     call h5tset_size_f(a_type, a_size(1), h5_error)
     
@@ -43,12 +43,13 @@ contains
     
     h5md_version = '0.1.0'
     a_size(1) = len(h5md_version)
-    call h5screate_simple_f(1, a_size, a_space, h5_error)
+
+    call h5screate_f(H5S_SCALAR_F, a_space, h5_error)
     call h5tcopy_f(H5T_NATIVE_CHARACTER, a_type, h5_error)
     call h5tset_size_f(a_type, a_size(1), h5_error)
     
     call h5acreate_f(h5_g_id, 'version', a_type, a_space, a_id, h5_error)
-    call h5awrite_f(a_id, a_type, prog_name, a_size, h5_error)
+    call h5awrite_f(a_id, a_type, h5md_version, a_size, h5_error)
 
     call h5aclose_f(a_id, h5_error)
     call h5sclose_f(a_space, h5_error)
