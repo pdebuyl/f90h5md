@@ -2,13 +2,7 @@ module h5md
   use hdf5
   implicit none
 
-  type h5md_file
-     character(len=128) :: file_name
-     integer(HID_T) :: file_id
-     integer(HID_T) :: traj_group_id
-     integer(HID_T) :: obs_group_id
-     integer :: error
-  end type h5md_file
+  integer :: h5_error
 
   type h5md_obs
      integer(HID_T) :: obs_id
@@ -23,26 +17,57 @@ contains
 
   ! opens a h5md file
   ! prog_name is the name that appears in the 'creator' global attribute
-  subroutine h5md_open_file(file, filename, prog_name)
-    type(h5md_file), intent(out) :: file
+  subroutine h5md_open_file(file_id, filename, prog_name)
+    integer(HID_T), intent(out) :: file_id
     character(len=*), intent(in) :: filename, prog_name
+
+    character(len=5) :: h5md_version
+    integer(HID_T) :: h5_g_id
+    integer(HID_T) :: a_type, a_space, a_id
+    integer(HSIZE_T) :: a_size(1)
+
+    call h5fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, h5_error)
+
+    call h5gcreate_f(file_id, 'h5md', h5_g_id, h5_error)
+
+    a_size(1) = len(prog_name)
+    call h5screate_simple_f(1, a_size, a_space, h5_error)
+    call h5tcopy_f(H5T_NATIVE_CHARACTER, a_type, h5_error)
+    call h5tset_size_f(a_type, a_size(1), h5_error)
+    
+    call h5acreate_f(h5_g_id, 'creator', a_type, a_space, a_id, h5_error)
+    call h5awrite_f(a_id, a_type, prog_name, a_size, h5_error)
+
+    call h5aclose_f(a_id, h5_error)
+    call h5sclose_f(a_space, h5_error)
+    
+    h5md_version = '0.1.0'
+    a_size(1) = len(h5md_version)
+    call h5screate_simple_f(1, a_size, a_space, h5_error)
+    call h5tcopy_f(H5T_NATIVE_CHARACTER, a_type, h5_error)
+    call h5tset_size_f(a_type, a_size(1), h5_error)
+    
+    call h5acreate_f(h5_g_id, 'version', a_type, a_space, a_id, h5_error)
+    call h5awrite_f(a_id, a_type, prog_name, a_size, h5_error)
+
+    call h5aclose_f(a_id, h5_error)
+    call h5sclose_f(a_space, h5_error)
+
+    call h5gclose_f(h5_g_id, h5_error)
+
   end subroutine h5md_open_file
 
   ! adds a trajectory group in a h5md file
   ! group_name, if present, is the name of a subgroup of 'trajectory'. else,
   ! the group is directly 'trajectory'
-  subroutine h5md_create_trajectory_group(file, group_name)
-    type(h5md_file), intent(inout) :: file
-    character(len=*), intent(in), optional :: group_name
-  end subroutine h5md_create_trajectory_group
-
-  ! adds 'time' and 'step' information
-  ! if 'is_group' is .true., two groups are created, in which individual datasets
+  ! also, adds 'time' and 'step' information
+  ! if 'time_is_group' is .true., two groups are created, in which individual datasets
   ! will be placed. else, two datasets are created in the given group
-  subroutine h5md_create_time_step_dataset(traj_group_id, is_group)
-    integer(HID_T), intent(in) :: traj_group_id
-    logical, intent(in), optional :: is_group
-  end subroutine h5md_create_time_step_dataset
+  subroutine h5md_create_trajectory_group(file_id, group_name, time_is_group)
+    integer(HID_T), intent(inout) :: file_id
+    character(len=*), intent(in), optional :: group_name
+    logical, intent(in), optional :: time_is_group
+  end subroutine h5md_create_trajectory_group
 
   ! add a trajectory dataset to a trajectory group of name trajectory_name
   ! traj_group_id is the id of the trajectory troup
@@ -52,9 +77,9 @@ contains
   ! species_react is an optional argument. if set to .true., 'species' will be
   ! time dependent, if set to .false., 'species' will not possess the time
   ! dimension
-  subroutine h5md_add_trajectory_data(traj_group_id, traj_id, trajectory_name, N, D, species_react)
-    integer(HID_T), intent(in) :: traj_group_id
-    integer(HID_T), intent(out) :: traj_id
+  subroutine h5md_add_trajectory_data(file_id, group_name, trajectory_name, N, D, species_react)
+    integer(HID_T), intent(in) :: file_id
+    character(len=*), intent(in), optional :: group_name
     character(len=*), intent(in) :: trajectory_name
     integer, intent(in) :: N, D
     logical, intent(in), optional :: species_react
