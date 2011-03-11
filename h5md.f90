@@ -207,14 +207,92 @@ contains
   ! data is the actual data of dim (D,N)
   ! step is the integer step of simulation. if the linked 'step' dataset's latest value
   ! is present_step, 'step' and 'time' are not updated. Else, they are.
-  subroutine h5md_write_trajectory_data_d(traj_id, data, present_step, time)
-    integer(HID_T), intent(in) :: traj_id
+  subroutine h5md_write_trajectory_data_d(d_id, s_id, t_id, data, present_step, time)
+    integer(HID_T), intent(inout) :: d_id, s_id, t_id
     double precision, intent(in) :: data(:,:)
     integer, intent(in) :: present_step
     double precision, intent(in) :: time
+    
+    integer(HID_T) :: d_file_space, mem_s, step_id, step_s
+    integer(HSIZE_T) :: dims(3), max_dims(3), start(3), num(3)
+    integer :: last_step(1)
+    double precision :: last_time(1)
 
-    
-    
+    dims(1:2) = shape(data)
+    call h5screate_simple_f(2, dims, mem_s, h5_error)
+
+    call h5dget_space_f(d_id, d_file_space, h5_error)
+    call h5sget_simple_extent_dims_f(d_file_space, dims, max_dims, h5_error)
+    dims(3) = dims(3) + 1
+    call h5sclose_f(d_file_space, h5_error)
+    call h5dset_extent_f(d_id, dims, h5_error)
+    call h5dget_space_f(d_id, d_file_space, h5_error)
+
+    start(1) = 0 ; start(2) = 0 ; start(3) = dims(3)-1
+    num(1) = dims(1) ; num(2) = dims(2) ; num(3) = 1
+
+    call h5sselect_hyperslab_f(d_file_space, H5S_SELECT_SET_F, start, num, h5_error)
+    call h5dwrite_f(d_id, H5T_NATIVE_DOUBLE, data, dims, h5_error, mem_space_id=mem_s, file_space_id=d_file_space)
+    call h5sclose_f(d_file_space, h5_error)
+    call h5sclose_f(mem_s, h5_error)
+
+    ! open step
+    call h5dget_space_f(s_id, step_s, h5_error)
+    call h5sget_simple_extent_dims_f(step_s, dims, max_dims, h5_error)
+
+    if (dims(1) .le. 0) then
+       last_step(1) = -1
+    else
+       start(1) = dims(1)-1 ; num(1) = 1
+       dims(1) = 1
+       call h5screate_simple_f(1, dims, mem_s, h5_error)
+       call h5sselect_hyperslab_f(step_s, H5S_SELECT_SET_F, start, num, h5_error)
+       dims(1) = 1
+       call h5dread_f(s_id, H5T_NATIVE_INTEGER, last_step, dims, h5_error, mem_space_id=mem_s, file_space_id=step_s)
+       call h5sclose_f(mem_s, h5_error)
+    end if
+    ! check last
+    if (last_step(1) .gt. present_step) then ! if last > present_step -> error
+       write(*,*) 'error, last step is bigger than present step'
+    else if (last_step(1) .lt. present_step) then ! else if last < present_step -> extend step and append present_step, same for time
+       ! add step value to the end of the step dataset
+
+       dims(1) = 1
+       call h5screate_simple_f(1, dims, mem_s, h5_error)
+       call h5sget_simple_extent_dims_f(step_s, dims, max_dims, h5_error)
+       call h5sclose_f(step_s, h5_error)
+       start = (/ dims(1), 0, 0 /) ; num = (/ 1, 0, 0 /)
+       dims(1) = dims(1) + 1
+       call h5dset_extent_f(s_id, dims, h5_error)
+       call h5dget_space_f(s_id, step_s, h5_error)
+
+       call h5sselect_hyperslab_f(step_s, H5S_SELECT_SET_F, start, num, h5_error)
+       call h5dwrite_f(s_id, H5T_NATIVE_INTEGER, present_step, num, h5_error, mem_space_id=mem_s, file_space_id=step_s)
+       call h5sclose_f(step_s, h5_error)
+       call h5sclose_f(mem_s, h5_error)
+
+       ! add time value to the end of the time dataset
+       dims(1) = 1
+       call h5screate_simple_f(1, dims, mem_s, h5_error)
+
+       call h5dget_space_f(t_id, step_s, h5_error)
+       call h5sget_simple_extent_dims_f(step_s, dims, max_dims, h5_error)
+       call h5sclose_f(step_s, h5_error)
+       dims(1) = dims(1) + 1
+       call h5dset_extent_f(t_id, dims, h5_error)
+       call h5dget_space_f(t_id, step_s, h5_error)
+       call h5sget_simple_extent_dims_f(step_s, dims, max_dims, h5_error)
+       start(1) = dims(1) - 1 ; num(1) = 1
+       call h5sselect_hyperslab_f(step_s, H5S_SELECT_SET_F, start, num, h5_error)
+       dims(1) = 1
+       last_time(1) = time
+       call h5dwrite_f(t_id, H5T_NATIVE_DOUBLE, last_time, dims, h5_error, mem_space_id=mem_s, file_space_id=step_s)
+       call h5sclose_f(step_s, h5_error)
+       call h5sclose_f(mem_s, h5_error)
+
+    end if ! else if last = present_step, do nothing
+
+
   end subroutine h5md_write_trajectory_data_d
 
   ! takes a single value and appends it to the appropriate buffer.
