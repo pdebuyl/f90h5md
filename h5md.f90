@@ -5,12 +5,11 @@ module h5md
   integer :: h5_error
 
   type h5md_obs
-     integer(HID_T) :: obs_id
+     integer(HID_T) :: id
      double precision, allocatable :: d_buffer(:)
      integer, allocatable :: i_buffer(:)
      integer :: buffer_len
      integer :: buffer_i
-     integer :: last_val
   end type h5md_obs
 
 contains
@@ -295,9 +294,105 @@ contains
 
   end subroutine h5md_write_trajectory_data_d
 
+  subroutine h5md_create_obs(obs, file_id, name, is_int)
+    type(h5md_obs), intent(out) :: obs
+    integer(HID_T), intent(inout) :: file_id
+    character(len=*), intent(in) :: name
+    logical, intent(in), optional :: is_int
+
+    integer(HID_T) :: s_id, plist
+    integer(HSIZE_T) :: dims(1), max_dims(1), chunk_dims(1)
+    integer :: rank
+
+    obs%buffer_len = 128
+    if (present(is_int) .and. is_int) then
+       allocate(obs% i_buffer(obs%buffer_len))
+    else
+       allocate(obs% d_buffer(obs%buffer_len))
+    end if
+    
+    obs% buffer_i = 0
+    
+    rank = 1
+    dims = (/ 0 /)
+    max_dims = (/ H5S_UNLIMITED_F /)
+    call h5screate_simple_f(rank, dims, s_id, h5_error, max_dims)
+    chunk_dims = (/ 128 /)
+    call h5pcreate_f(H5P_DATASET_CREATE_F, plist, h5_error)
+    call h5pset_chunk_f(plist, rank, chunk_dims, h5_error)
+    if (present(is_int) .and. is_int) then
+       call h5dcreate_f(file_id, 'observables/'//name, H5T_NATIVE_INTEGER, s_id, obs% id, h5_error, plist)
+    else
+       call h5dcreate_f(file_id, 'observables/'//name, H5T_NATIVE_DOUBLE, s_id, obs% id, h5_error, plist)
+    end if
+    call h5pclose_f(plist, h5_error)
+    call h5sclose_f(s_id, h5_error)
+    
+  end subroutine h5md_create_obs
+
   ! takes a single value and appends it to the appropriate buffer.
   ! if the buffer size is reached, the buffer is dumped to the file.
-  subroutine h5md_append_observable_value
-  end subroutine h5md_append_observable_value
+  subroutine h5md_append_obs_value_d(obs, value, force_dump)
+    type(h5md_obs), intent(inout) :: obs
+    double precision, optional, intent(in) :: value
+    logical, intent(in), optional :: force_dump
+
+    logical :: do_dump
+    integer :: dump_len
+    integer(HID_T) :: obs_s, mem_s
+    integer(HSIZE_T) :: dims(1), max_dims(1), start(1), num(1)
+
+    if (present(value)) then
+
+       obs% buffer_i = obs% buffer_i + 1
+       if ( obs% buffer_i .gt. obs% buffer_len ) then
+          write(*,*) 'WARNING: buffer overrun'
+       end if
+
+       obs% d_buffer(obs%buffer_i) = value
+    end if
+
+    if (present(force_dump)) then
+       if (force_dump) then
+          do_dump = force_dump
+          dump_len = obs% buffer_i
+       end if
+    end if
+
+    if (obs% buffer_i .eq. obs% buffer_len) then
+       do_dump = .true.
+       dump_len = obs% buffer_len
+    end if
+
+
+    if (do_dump) then
+       
+       call h5dget_space_f(obs% id , obs_s, h5_error)
+       call h5sget_simple_extent_dims_f(obs_s, dims, max_dims, h5_error)
+       call h5sclose_f(obs_s, h5_error)
+       start = dims ; num(1) = dump_len
+       dims(1) = dims(1) + dump_len
+       call h5dset_extent_f(obs% id, dims, h5_error)
+       call h5dget_space_f(obs% id , obs_s, h5_error)
+       call h5sselect_hyperslab_f(obs_s, H5S_SELECT_SET_F, start, num, h5_error)
+       call h5dwrite_f(obs% id, H5T_NATIVE_DOUBLE, obs% d_buffer, num, h5_error, file_space_id=obs_s)
+       call h5sclose_f(obs_s, h5_error)
+       
+       obs% buffer_i = 0
+
+    end if
+    
+  end subroutine h5md_append_obs_value_d
+
+  subroutine h5md_close_obs(obs)
+    type(h5md_obs), intent(inout) :: obs
+
+    if (obs% buffer_i .gt. 0) then
+       call h5md_append_obs_value_d(obs, force_dump = .true.)
+    end if
+
+    call h5dclose_f(obs% id, h5_error)
+
+  end subroutine h5md_close_obs
   
 end module h5md
