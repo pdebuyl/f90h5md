@@ -245,6 +245,45 @@ contains
 
   end subroutine h5md_write_trajectory_data_d
 
+  ! beware: should be doubled for integer and real values, with explicit interfacing
+  ! adds a "time frame" to a trajectory
+  ! traj_id is the trajectory dataset
+  ! data is the actual data of dim (D,N)
+  ! step is the integer step of simulation. if the linked 'step' dataset's latest value
+  ! is present_step, 'step' and 'time' are not updated. Else, they are.
+  subroutine h5md_write_trajectory_data_d1d(ID, data, present_step, time)
+    type(h5md_t), intent(inout) :: ID
+    double precision, intent(in) :: data(:)
+    integer, intent(in) :: present_step
+    double precision, intent(in) :: time
+    
+    integer(HID_T) :: d_file_space, mem_s, step_id, step_s
+    integer(HSIZE_T) :: dims(3), max_dims(3), start(3), num(3)
+    integer :: last_step(1)
+    double precision :: last_time(1)
+
+    dims(1:1) = shape(data)
+    call h5screate_simple_f(1, dims, mem_s, h5_error)
+
+    call h5dget_space_f(ID% d_id, d_file_space, h5_error)
+    call h5sget_simple_extent_dims_f(d_file_space, dims, max_dims, h5_error)
+    dims(3) = dims(3) + 1
+    call h5sclose_f(d_file_space, h5_error)
+    call h5dset_extent_f(ID% d_id, dims, h5_error)
+    call h5dget_space_f(ID% d_id, d_file_space, h5_error)
+
+    start(1) = 0 ; start(2) = 0 ; start(3) = dims(3)-1
+    num(1) = dims(1) ; num(2) = dims(2) ; num(3) = 1
+
+    call h5sselect_hyperslab_f(d_file_space, H5S_SELECT_SET_F, start, num, h5_error)
+    call h5dwrite_f(ID% d_id, H5T_NATIVE_DOUBLE, data, dims, h5_error, mem_space_id=mem_s, file_space_id=d_file_space)
+    call h5sclose_f(d_file_space, h5_error)
+    call h5sclose_f(mem_s, h5_error)
+
+    call h5md_append_step_time(ID% s_id, ID% t_id, present_step, time)
+
+  end subroutine h5md_write_trajectory_data_d1d
+
   subroutine h5md_append_step_time(s_id, t_id, step, time)
     integer(HID_T), intent(inout) :: s_id, t_id
     integer, intent(in) :: step
