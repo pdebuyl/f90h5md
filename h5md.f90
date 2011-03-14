@@ -12,6 +12,12 @@ module h5md
      integer :: buffer_i
   end type h5md_obs
 
+  type h5md_t
+     integer(HID_T) :: d_id
+     integer(HID_T) :: s_id
+     integer(HID_T) :: t_id
+  end type h5md_t
+  
 contains
 
   ! opens a h5md file
@@ -126,11 +132,11 @@ contains
   ! time dependent, if set to .false., 'species' will not possess the time
   ! dimension
   ! link_from is the name of another trajectory from which the time can be copied
-  subroutine h5md_add_trajectory_data(file_id, trajectory_name, N, D, d_id, step_id, time_id, group_name, species_react, link_from)
+  subroutine h5md_add_trajectory_data(file_id, trajectory_name, N, D, ID, group_name, species_react, link_from)
     integer(HID_T), intent(in) :: file_id
     character(len=*), intent(in) :: trajectory_name
     integer, intent(in) :: N, D
-    integer(HID_T), intent(out) :: d_id, time_id, step_id
+    type(h5md_t), intent(out) :: ID
     character(len=*), intent(in), optional :: group_name
     logical, intent(in), optional :: species_react
     character(len=*), intent(in), optional :: link_from
@@ -178,9 +184,9 @@ contains
     call h5pcreate_f(H5P_DATASET_CREATE_F, plist, h5_error)
     call h5pset_chunk_f(plist, rank, chunk_dims, h5_error)
     if (trajectory_name .ne. 'species') then
-       call h5dcreate_f(g_id, 'coordinates', H5T_NATIVE_DOUBLE, s_id, d_id, h5_error, plist)
+       call h5dcreate_f(g_id, 'coordinates', H5T_NATIVE_DOUBLE, s_id, ID% d_id, h5_error, plist)
     else
-       call h5dcreate_f(g_id, 'coordinates', H5T_NATIVE_INTEGER, s_id, d_id, h5_error, plist)
+       call h5dcreate_f(g_id, 'coordinates', H5T_NATIVE_INTEGER, s_id, ID% d_id, h5_error, plist)
     end if
     call h5pclose_f(plist, h5_error)
     call h5sclose_f(s_id, h5_error)
@@ -192,8 +198,8 @@ contains
        call h5md_create_step_time(g_id)
     end if
 
-    call h5dopen_f(g_id, 'step', step_id, h5_error)
-    call h5dopen_f(g_id, 'time', time_id, h5_error)
+    call h5dopen_f(g_id, 'step', ID% s_id, h5_error)
+    call h5dopen_f(g_id, 'time', ID% t_id, h5_error)
 
     call h5gclose_f(g_id, h5_error)
     call h5gclose_f(traj_g_id, h5_error)
@@ -206,8 +212,8 @@ contains
   ! data is the actual data of dim (D,N)
   ! step is the integer step of simulation. if the linked 'step' dataset's latest value
   ! is present_step, 'step' and 'time' are not updated. Else, they are.
-  subroutine h5md_write_trajectory_data_d(d_id, s_id, t_id, data, present_step, time)
-    integer(HID_T), intent(inout) :: d_id, s_id, t_id
+  subroutine h5md_write_trajectory_data_d(ID, data, present_step, time)
+    type(h5md_t), intent(inout) :: ID
     double precision, intent(in) :: data(:,:)
     integer, intent(in) :: present_step
     double precision, intent(in) :: time
@@ -220,22 +226,22 @@ contains
     dims(1:2) = shape(data)
     call h5screate_simple_f(2, dims, mem_s, h5_error)
 
-    call h5dget_space_f(d_id, d_file_space, h5_error)
+    call h5dget_space_f(ID% d_id, d_file_space, h5_error)
     call h5sget_simple_extent_dims_f(d_file_space, dims, max_dims, h5_error)
     dims(3) = dims(3) + 1
     call h5sclose_f(d_file_space, h5_error)
-    call h5dset_extent_f(d_id, dims, h5_error)
-    call h5dget_space_f(d_id, d_file_space, h5_error)
+    call h5dset_extent_f(ID% d_id, dims, h5_error)
+    call h5dget_space_f(ID% d_id, d_file_space, h5_error)
 
     start(1) = 0 ; start(2) = 0 ; start(3) = dims(3)-1
     num(1) = dims(1) ; num(2) = dims(2) ; num(3) = 1
 
     call h5sselect_hyperslab_f(d_file_space, H5S_SELECT_SET_F, start, num, h5_error)
-    call h5dwrite_f(d_id, H5T_NATIVE_DOUBLE, data, dims, h5_error, mem_space_id=mem_s, file_space_id=d_file_space)
+    call h5dwrite_f(ID% d_id, H5T_NATIVE_DOUBLE, data, dims, h5_error, mem_space_id=mem_s, file_space_id=d_file_space)
     call h5sclose_f(d_file_space, h5_error)
     call h5sclose_f(mem_s, h5_error)
 
-    call h5md_append_step_time(s_id, t_id, present_step, time)
+    call h5md_append_step_time(ID% s_id, ID% t_id, present_step, time)
 
   end subroutine h5md_write_trajectory_data_d
 
@@ -306,9 +312,9 @@ contains
 
   end subroutine h5md_append_step_time
 
-  subroutine h5md_create_obs(file_id, name, d_id, step_id, time_id, link_from, is_int)
+  subroutine h5md_create_obs(file_id, name, ID, link_from, is_int)
     integer(HID_T), intent(inout) :: file_id
-    integer(HID_T), intent(out) :: d_id, step_id, time_id
+    type(h5md_t), intent(out) :: ID
     character(len=*), intent(in) :: name
     character(len=*), intent(in), optional :: link_from
     logical, intent(in), optional :: is_int
@@ -327,9 +333,9 @@ contains
     call h5pcreate_f(H5P_DATASET_CREATE_F, plist, h5_error)
     call h5pset_chunk_f(plist, rank, chunk_dims, h5_error)
     if (present(is_int) .and. is_int) then
-       call h5dcreate_f(g_id, 'samples', H5T_NATIVE_INTEGER, file_s, d_id, h5_error, plist)
+       call h5dcreate_f(g_id, 'samples', H5T_NATIVE_INTEGER, file_s, ID% d_id, h5_error, plist)
     else
-       call h5dcreate_f(g_id, 'samples', H5T_NATIVE_DOUBLE, file_s, d_id, h5_error, plist)
+       call h5dcreate_f(g_id, 'samples', H5T_NATIVE_DOUBLE, file_s, ID% d_id, h5_error, plist)
     end if
     call h5pclose_f(plist, h5_error)
     call h5sclose_f(file_s, h5_error)
@@ -341,8 +347,8 @@ contains
        call h5md_create_step_time(g_id)
     end if
 
-    call h5dopen_f(g_id, 'step', step_id, h5_error)
-    call h5dopen_f(g_id, 'time', time_id, h5_error)
+    call h5dopen_f(g_id, 'step', ID% s_id, h5_error)
+    call h5dopen_f(g_id, 'time', ID% t_id, h5_error)
 
     call h5gclose_f(g_id, h5_error)
     
@@ -350,8 +356,8 @@ contains
 
   ! takes a single value and appends it to the appropriate buffer.
   ! if the buffer size is reached, the buffer is dumped to the file.
-  subroutine h5md_append_obs_value_d(d_id, s_id, t_id, value, present_step, time)
-    integer(HID_T), intent(inout) :: d_id, s_id, t_id
+  subroutine h5md_append_obs_value_d(ID, value, present_step, time)
+    type(h5md_t), intent(inout) :: ID
     double precision, intent(in) :: value
     integer, intent(in) :: present_step
     double precision, intent(in) :: time
@@ -362,19 +368,19 @@ contains
     dims(1) = 1
     call h5screate_simple_f(1, dims, mem_s, h5_error)
 
-    call h5dget_space_f(d_id , obs_s, h5_error)
+    call h5dget_space_f(ID% d_id , obs_s, h5_error)
     call h5sget_simple_extent_dims_f(obs_s, dims, max_dims, h5_error)
     call h5sclose_f(obs_s, h5_error)
     start = dims ; num(1) = 1
     dims(1) = dims(1) + 1
-    call h5dset_extent_f(d_id, dims, h5_error)
-    call h5dget_space_f(d_id , obs_s, h5_error)
+    call h5dset_extent_f(ID% d_id, dims, h5_error)
+    call h5dget_space_f(ID% d_id , obs_s, h5_error)
     call h5sselect_hyperslab_f(obs_s, H5S_SELECT_SET_F, start, num, h5_error)
-    call h5dwrite_f(d_id, H5T_NATIVE_DOUBLE, value, num, h5_error, mem_space_id=mem_s, file_space_id=obs_s)
+    call h5dwrite_f(ID% d_id, H5T_NATIVE_DOUBLE, value, num, h5_error, mem_space_id=mem_s, file_space_id=obs_s)
     call h5sclose_f(obs_s, h5_error)
     call h5sclose_f(mem_s, h5_error)
 
-    call h5md_append_step_time(s_id, t_id, present_step, time)
+    call h5md_append_step_time(ID% s_id, ID% t_id, present_step, time)
        
   end subroutine h5md_append_obs_value_d
 
@@ -389,4 +395,13 @@ contains
 
   end subroutine h5md_close_obs
   
+  subroutine h5md_close_ID(ID)
+    type(h5md_t), intent(inout) :: ID
+
+    call h5dclose_f(ID% d_id, h5_error)
+    call h5dclose_f(ID% s_id, h5_error)
+    call h5dclose_f(ID% t_id, h5_error)
+
+  end subroutine h5md_close_ID
+
 end module h5md
