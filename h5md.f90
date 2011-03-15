@@ -31,40 +31,64 @@ contains
     integer(HID_T), intent(out) :: file_id
     character(len=*), intent(in) :: filename, prog_name
 
-    character(len=5) :: h5md_version
+    integer :: h5md_version(2), creation_time, val(8)
     integer(HID_T) :: h5_g_id, g_id
     integer(HID_T) :: a_type, a_space, a_id
     integer(HSIZE_T) :: a_size(1)
+    integer :: months(12), i
 
     call h5fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, h5_error)
 
     call h5gcreate_f(file_id, 'h5md', h5_g_id, h5_error)
 
+    ! write creator attribute
     call h5screate_f(H5S_SCALAR_F, a_space, h5_error)
     a_size(1) = len(prog_name)
     call h5tcopy_f(H5T_NATIVE_CHARACTER, a_type, h5_error)
     call h5tset_size_f(a_type, a_size(1), h5_error)
-    
     call h5acreate_f(h5_g_id, 'creator', a_type, a_space, a_id, h5_error)
     call h5awrite_f(a_id, a_type, prog_name, a_size, h5_error)
-
     call h5aclose_f(a_id, h5_error)
     call h5sclose_f(a_space, h5_error)
     call h5tclose_f(a_type, h5_error)
     
-    h5md_version = '0.1.0'
-    a_size(1) = len(h5md_version)
+    ! write h5md/version
+    h5md_version = (/ 0, 1 /)
+    a_size(1) = 2
+    call h5screate_simple_f(1, a_size, a_space, h5_error)
+    call h5acreate_f(h5_g_id, 'version', H5T_NATIVE_INTEGER, a_space, a_id, h5_error)
+    call h5awrite_f(a_id, H5T_NATIVE_INTEGER, h5md_version, a_size, h5_error)
+    call h5aclose_f(a_id, h5_error)
+    call h5sclose_f(a_space, h5_error)
 
+    ! write h5md/creation_time as seconds since Epoch
+    months = (/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /)
+    call date_and_time(values=val)
+    creation_time = sum(months) * 24*60*60 * (val(1)-1970)
+    if (val(2).gt.1) then
+       creation_time = creation_time + sum(months(1:val(2)-1)) * 24*60*60
+    end if
+    do i=1970,val(1)
+       if (mod(i,4).eq.0) then
+          if (mod(i,100).eq.0) then
+             if (mod(i,400).eq.0) creation_time = creation_time + 24*60*60
+          else
+             creation_time = creation_time + 24*60*60
+          end if
+       end if
+    end do
+    creation_time = creation_time + (val(3)-1)*24*60*60
+    creation_time = creation_time - val(4)*60  
+    creation_time = creation_time + val(5)*60*60
+    creation_time = creation_time + val(6)*60
+    creation_time = creation_time + val(7)
+
+    a_size(1) = 1
     call h5screate_f(H5S_SCALAR_F, a_space, h5_error)
-    call h5tcopy_f(H5T_NATIVE_CHARACTER, a_type, h5_error)
-    call h5tset_size_f(a_type, a_size(1), h5_error)
-    
-    call h5acreate_f(h5_g_id, 'version', a_type, a_space, a_id, h5_error)
-    call h5awrite_f(a_id, a_type, h5md_version, a_size, h5_error)
-
+    call h5acreate_f(h5_g_id, 'creation_time', H5T_NATIVE_INTEGER, a_space, a_id, h5_error)
+    call h5awrite_f(a_id, H5T_NATIVE_INTEGER, creation_time, a_size, h5_error)
     call h5aclose_f(a_id, h5_error)
     call h5sclose_f(a_space, h5_error)
-    call h5tclose_f(a_type, h5_error)
 
     call h5gclose_f(h5_g_id, h5_error)
 
