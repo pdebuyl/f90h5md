@@ -1,32 +1,48 @@
+
+!> This module allows to handle H5MD files.
+
 module h5md
   use hdf5
   implicit none
 
+  !> Global variable to keep the error from HDF5 instructions.
   integer :: h5_error
 
+  !> A type to hold an observable.
+  !! Provides a buffering facility.
   type h5md_obs
+     !> The ID of the observable in the file
      integer(HID_T) :: id
+     !> The double precision buffer.
      double precision, allocatable :: d_buffer(:)
+     !> The integer buffer.
      integer, allocatable :: i_buffer(:)
+     !> The length of the buffer.
      integer :: buffer_len
+     !> The index in the buffer.
      integer :: buffer_i
   end type h5md_obs
 
+  !> A type to hold a reference to a dataset alongside with the step and time information.
   type h5md_t
+     !> The ID of the dataset in the file.
      integer(HID_T) :: d_id
+     !> The ID of the related step dataset.
      integer(HID_T) :: s_id
+     !> The ID of the related time dataset.
      integer(HID_T) :: t_id
   end type h5md_t
   
 contains
 
-  ! opens a h5md file
-  ! creates the '/h5md' group and gives it the attributes 'creator' and 
-  ! 'version'. currently, only supports creating a new file.
-  ! also creates 'trajectory' and 'observables' groups.
-  ! file_id is the returned hdf5 location of the file
-  ! filename is the name of the file
-  ! prog_name is the name that appears in the 'creator' global attribute
+  !> Opens a h5md file
+  !!
+  !! Creates the '/h5md' group and gives it the attributes 'creator' and 
+  !! 'version'. currently, only supports creating a new file.
+  !! also creates 'trajectory' and 'observables' groups.
+  !! @param file_id the returned hdf5 location of the file.
+  !! @param filename name of the file.
+  !! @prog_name name that appears in the 'creator' global attribute.
   subroutine h5md_open_file(file_id, filename, prog_name)
     integer(HID_T), intent(out) :: file_id
     character(len=*), intent(in) :: filename, prog_name
@@ -100,8 +116,8 @@ contains
 
   end subroutine h5md_open_file
 
-  ! adds a trajectory group in a h5md file
-  ! group_name is the name of a subgroup of 'trajectory'.
+  !> Adds a trajectory group in a h5md file
+  !! @param group_name name of a subgroup of 'trajectory'.
   subroutine h5md_create_trajectory_group(file_id, group_name)
     integer(HID_T), intent(inout) :: file_id
     character(len=*), intent(in) :: group_name
@@ -114,7 +130,8 @@ contains
 
   end subroutine h5md_create_trajectory_group
 
-  ! creates the step and time datasets in the specified group
+  !> Creates the step and time datasets in the specified group
+  !! @param group_id location to place the datasets.
   subroutine h5md_create_step_time(group_id)
     integer(HID_T), intent(inout) :: group_id
 
@@ -148,14 +165,15 @@ contains
     
   end subroutine h5md_create_step_time
 
-  ! add a trajectory dataset to a trajectory group of name trajectory_name
-  ! group_name is an optional group name for the trajectory group
-  ! trajectory_name can be 'position', 'velocity', 'force' or 'species'
-  ! N is the number of atoms, D the spatial dimension
-  ! species_react is an optional argument. if set to .true., 'species' will be
-  ! time dependent, if set to .false., 'species' will not possess the time
-  ! dimension
-  ! link_from is the name of another trajectory from which the time can be copied
+  !> Adds a trajectory dataset to a trajectory group of name trajectory_name
+  !! @param group_name optional group name for the trajectory group
+  !! @param trajectory_name can be 'position', 'velocity', 'force' or 'species'
+  !! @param N the number of atoms
+  !! @param D the spatial dimension
+  !! @param species_react optional argument. if set to .true., 'species' will be
+  !! time dependent, if set to .false., 'species' will not possess the time
+  !! dimension
+  !! @param link_from is the name of another trajectory from which the time can be copied
   subroutine h5md_add_trajectory_data(file_id, trajectory_name, N, D, ID, group_name, species_react, link_from)
     integer(HID_T), intent(in) :: file_id
     character(len=*), intent(in) :: trajectory_name
@@ -230,12 +248,12 @@ contains
     
   end subroutine h5md_add_trajectory_data
 
-  ! beware: should be doubled for integer and real values, with explicit interfacing
-  ! adds a "time frame" to a trajectory
-  ! traj_id is the trajectory dataset
-  ! data is the actual data of dim (D,N)
-  ! step is the integer step of simulation. if the linked 'step' dataset's latest value
-  ! is present_step, 'step' and 'time' are not updated. Else, they are.
+  !> adds a "time frame" to a trajectory
+  !! @param traj_id is the trajectory dataset
+  !! @param data is the actual data of dim (D,N)
+  !! @param step is the integer step of simulation. if the linked 'step' dataset's latest value
+  !! is present_step, 'step' and 'time' are not updated. Else, they are.
+  !! @todo should be doubled for integer and real values, with explicit interfacing
   subroutine h5md_write_trajectory_data_d(ID, data, present_step, time)
     type(h5md_t), intent(inout) :: ID
     double precision, intent(in) :: data(:,:)
@@ -269,12 +287,12 @@ contains
 
   end subroutine h5md_write_trajectory_data_d
 
-  ! beware: should be doubled for integer and real values, with explicit interfacing
-  ! adds a "time frame" to a trajectory
-  ! traj_id is the trajectory dataset
-  ! data is the actual data of dim (D,N)
-  ! step is the integer step of simulation. if the linked 'step' dataset's latest value
-  ! is present_step, 'step' and 'time' are not updated. Else, they are.
+  !> Adds a "time frame" to a trajectory
+  !! @param traj_id is the trajectory dataset
+  !! @param data is the actual data of dim (D,N)
+  !! @param step is the integer step of simulation. if the linked 'step' dataset's latest value
+  !! is present_step, 'step' and 'time' are not updated. Else, they are.
+  !! @todo should be doubled for integer and real values, with explicit interfacing
   subroutine h5md_write_trajectory_data_d1d(ID, data, present_step, time)
     type(h5md_t), intent(inout) :: ID
     double precision, intent(in) :: data(:)
@@ -308,6 +326,12 @@ contains
 
   end subroutine h5md_write_trajectory_data_d1d
 
+  !> Appends step and time information.
+  !! If the last step is the present step, does nothing. Else, append the data.
+  !! @param s_id ID of the step dataset
+  !! @param t_id ID of the time dataset
+  !! @param step The present step
+  !! @param time The present time
   subroutine h5md_append_step_time(s_id, t_id, step, time)
     integer(HID_T), intent(inout) :: s_id, t_id
     integer, intent(in) :: step
@@ -375,6 +399,12 @@ contains
 
   end subroutine h5md_append_step_time
 
+  !> Sets up a h5md_t variable.
+  !! @param file_id ID of the file.
+  !! @param name Name of the observable
+  !! @param ID Resulting h5md_t variable
+  !! @param link_from Indicates if the step and time for this observable should be linked from another one.
+  !! @param is_int Indicates if the observable is integer.
   subroutine h5md_create_obs(file_id, name, ID, link_from, is_int)
     integer(HID_T), intent(inout) :: file_id
     type(h5md_t), intent(out) :: ID
@@ -417,8 +447,12 @@ contains
     
   end subroutine h5md_create_obs
 
-  ! takes a single value and appends it to the appropriate buffer.
-  ! if the buffer size is reached, the buffer is dumped to the file.
+  !> Takes a single value and appends it to the appropriate buffer.
+  !! if the buffer size is reached, the buffer is dumped to the file.
+  !! @param ID h5md_t variable.
+  !! @param value value of the observable.
+  !! @param present_step integer time step.
+  !! @param time real-valued time.
   subroutine h5md_append_obs_value_d(ID, value, present_step, time)
     type(h5md_t), intent(inout) :: ID
     double precision, intent(in) :: value
@@ -447,6 +481,8 @@ contains
        
   end subroutine h5md_append_obs_value_d
 
+  !> Close a h5md_obs variable.
+  !! @param obs h5md_obs variable.
   subroutine h5md_close_obs(obs)
     type(h5md_obs), intent(inout) :: obs
 
@@ -458,6 +494,8 @@ contains
 
   end subroutine h5md_close_obs
   
+  !> Close a h5md_t variable.
+  !! @param ID h5md_t variable.
   subroutine h5md_close_ID(ID)
     type(h5md_t), intent(inout) :: ID
 
