@@ -35,7 +35,7 @@ module h5md
   
 contains
 
-  !> Opens a h5md file
+  !> Creates a h5md file
   !!
   !! Creates the '/h5md' group and gives it the attributes 'creator' and 
   !! 'version'. currently, only supports creating a new file.
@@ -43,7 +43,7 @@ contains
   !! @param file_id the returned hdf5 location of the file.
   !! @param filename name of the file.
   !! @prog_name name that appears in the 'creator' global attribute.
-  subroutine h5md_open_file(file_id, filename, prog_name)
+  subroutine h5md_create_file(file_id, filename, prog_name)
     integer(HID_T), intent(out) :: file_id
     character(len=*), intent(in) :: filename, prog_name
 
@@ -114,7 +114,7 @@ contains
     call h5gcreate_f(file_id, 'observables', g_id, h5_error)
     call h5gclose_f(g_id, h5_error)
 
-  end subroutine h5md_open_file
+  end subroutine h5md_create_file
 
   !> Adds a trajectory group in a h5md file
   !! @param group_name name of a subgroup of 'trajectory'.
