@@ -267,6 +267,29 @@ contains
     
   end subroutine h5md_add_trajectory_data
 
+  !> Opens a trajectory dataset and its associated step and time datasets.
+  !! @param file_id the HDF5 ID of the file.
+  !! @param trajectory_name The name of the trajectory: position, velocity, force or species.
+  !! @param ID The h5md_t variable for the dataset.
+  !! @param group_name The optional group name.
+  subroutine h5md_open_trajectory(file_id, trajectory_name, ID, group_name)
+    integer(HID_T), intent(inout) :: file_id
+    character(len=*), intent(in) :: trajectory_name
+    type(h5md_t), intent(out) :: ID
+    character(len=*), intent(in), optional :: group_name
+
+    if (present(group_name)) then
+       call h5dopen_f(file_id, 'trajectory/'//group_name//'/'//trajectory_name//'/coordinates', ID%d_id, h5_error)
+       call h5dopen_f(file_id, 'trajectory/'//group_name//'/'//trajectory_name//'/step', ID%s_id, h5_error)
+       call h5dopen_f(file_id, 'trajectory/'//group_name//'/'//trajectory_name//'/time', ID%t_id, h5_error)
+    else
+       call h5dopen_f(file_id, 'trajectory/'//trajectory_name//'/coordinates', ID%d_id, h5_error)
+       call h5dopen_f(file_id, 'trajectory/'//trajectory_name//'/step', ID%s_id, h5_error)
+       call h5dopen_f(file_id, 'trajectory/'//trajectory_name//'/time', ID%t_id, h5_error)
+    end if
+
+  end subroutine h5md_open_trajectory
+
   !> adds a "time frame" to a trajectory
   !! @param traj_id is the trajectory dataset
   !! @param data is the actual data of dim (D,N)
@@ -305,6 +328,42 @@ contains
     call h5md_append_step_time(ID% s_id, ID% t_id, present_step, time)
 
   end subroutine h5md_write_trajectory_data_d
+
+  !> Load a time frame from a time frame in a H5MD file.
+  !>
+  !> @param ID h5md_t variable of the dataset
+  !> @param data the coordinates array
+  !> @param step the integer step from which to choose the data. Currently the only supported value is -1 for the last step.
+  subroutine h5md_load_trajectory_data_d(ID, data, step)
+    type(h5md_t), intent(inout) :: ID
+    double precision, intent(inout) :: data(:,:)
+    integer, intent(in) :: step
+
+    integer(HID_T) :: file_space, mem_space
+    integer :: ndims, data_shape(2)
+    integer(HSIZE_T) :: dims(3), max_dims(3), start(3)
+
+    if (step /= -1) then
+       stop 'unknown step in h5md_load_trajectory_data'
+    end if
+
+    call h5dget_space_f(ID%d_id , file_space, h5_error)
+    call h5sget_simple_extent_ndims_f(file_space, ndims, h5_error)
+    if (ndims /= 3) stop 'wrong number of dimensions in h5md_load_trajectory_data'
+    call h5sget_simple_extend_dims_f(file_space, dims, max_dims, h5_error)
+    data_shape = shape(data)
+    if (data_shape(1) /= dims(1) .or. data_shape(2) /= dims(2)) then
+       stop 'wrong dimensions for data in h5md_load_trajectory_data'
+    end if
+    if (dims(3) < 1) stop 'no data in h5md_load_trajectory_data'
+    start = (/ 0, 0, 0 /)
+    start(3) = dims(3)-1
+    dims(3) = 1
+    call h5sselect_hyperslab_f(file_space, H5S_SELECT_SET_F, start, dims, h5_error)
+    call h5dread_f(ID%d_id, H5T_NATIVE_DOUBLE, data, dims, h5_error, file_space_id=file_space)
+    call h5sclose_f(file_space, h5_error)
+
+  end subroutine h5md_load_trajectory_data_d
 
   !> Adds a "time frame" to a trajectory
   !! @param traj_id is the trajectory dataset
