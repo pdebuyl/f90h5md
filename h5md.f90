@@ -116,6 +116,25 @@ contains
 
   end subroutine h5md_create_file
 
+  !> Opens a h5md file
+  !!
+  !! Returns file_id as the location of the opened file.
+  !! @param file_id the returned hdf5 location of the file.
+  !! @param filename name of the file.
+  !! @param rw flag that allows to open the file in read/write mode.
+  subroutine h5md_open_file(file_id, filename, rw)
+    integer(HID_T), intent(out) :: file_id
+    character(len=*), intent(in) :: filename
+    logical, intent(in), optional :: rw
+    
+    if (present(rw) .and. rw) then
+       call h5fopen_f(filename, H5F_ACC_RDWR_F, file_id, h5_error)
+    else
+       call h5fopen_f(filename, H5F_ACC_RDONLY_F, file_id, h5_error)
+    end if
+
+  end subroutine h5md_open_file
+
   !> Adds a trajectory group in a h5md file
   !! @param group_name name of a subgroup of 'trajectory'.
   subroutine h5md_create_trajectory_group(file_id, group_name)
