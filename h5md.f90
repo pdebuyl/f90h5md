@@ -267,6 +267,40 @@ contains
     
   end subroutine h5md_add_trajectory_data
 
+  !> Sets the minimum and maximum attributes to a position trajectory dataset.
+  !! @param ID h5md_t of the dataset
+  !! @param xmin lower coordinates of the box
+  !! @param xmax upper coordinates of the box
+  subroutine h5md_set_box_size(ID, xmin, xmax)
+    type(h5md_t), intent(inout) :: ID
+    double precision, intent(in) :: xmin(:)
+    double precision, intent(in) :: xmax(:)
+
+    integer(HID_T) :: att_id, att_s
+    integer(HSIZE_T) :: att_size(1)
+
+    ! Checking that xmin and xmax have the same size
+    if (size(xmin) /= size(xmax)) stop 'non equal dimensions for xmin and xmax in h5md_set_box_size'
+    
+    ! Setting the size for the attribute
+    att_size(1) = size(xmin)
+
+    ! Writing the minimum attribute
+    call h5screate_simple_f(1, att_size, att_s, h5_error)
+    call h5acreate_f(ID%d_id, 'minimum', H5T_NATIVE_DOUBLE, att_s, att_id, h5_error)
+    call h5awrite_f(att_id, H5T_NATIVE_DOUBLE, xmin, att_size, h5_error)
+    call h5aclose_f(att_id, h5_error)
+    call h5sclose_f(att_s, h5_error)
+
+    ! Writing the maximum attribute
+    call h5screate_simple_f(1, att_size, att_s, h5_error)
+    call h5acreate_f(ID%d_id, 'maximum', H5T_NATIVE_DOUBLE, att_s, att_id, h5_error)
+    call h5awrite_f(att_id, H5T_NATIVE_DOUBLE, xmax, att_size, h5_error)
+    call h5aclose_f(att_id, h5_error)
+    call h5sclose_f(att_s, h5_error)
+
+  end subroutine h5md_set_box_size
+
   !> Opens a trajectory dataset and its associated step and time datasets.
   !! @param file_id the HDF5 ID of the file.
   !! @param trajectory_name The name of the trajectory: position, velocity, force or species.
