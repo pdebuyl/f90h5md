@@ -18,6 +18,11 @@ for t_k,t_v in types.iteritems():
         else:
             rank = int(d_k)+1
         s=''
+        s+="""  !> Sets up a h5md_t variable.
+  !! @param file_id ID of the file.
+  !! @param name Name of the observable
+  !! @param ID Resulting h5md_t variable
+  !! @param link_from Indicates if the step and time for this observable should be linked from another one.""" 
         s+="""
   subroutine h5md_create_obs_%s%s(file_id, name, ID, data, link_from)
     integer(HID_T), intent(inout) :: file_id
@@ -55,6 +60,8 @@ for t_k,t_v in types.iteritems():
     call h5dcreate_f(g_id, 'samples', %s, file_s, ID%% d_id, h5_error, plist)
     call h5pclose_f(plist, h5_error)
     call h5sclose_f(file_s, h5_error)
+
+    deallocate(dims) ; deallocate(max_dims) ; deallocate(chunk_dims)
 
     if (present(link_from)) then
        call h5lcreate_hard_f(file_id, 'observables/'//link_from//'/step', g_id, 'step', h5_error)
