@@ -32,6 +32,25 @@ module h5md
      !> The ID of the related time dataset.
      integer(HID_T) :: t_id
   end type h5md_t
+
+  interface h5md_create_obs
+     module procedure h5md_create_obs_is
+     module procedure h5md_create_obs_i1
+     module procedure h5md_create_obs_i2
+     module procedure h5md_create_obs_ds
+     module procedure h5md_create_obs_d1
+     module procedure h5md_create_obs_d2
+  end interface
+
+  interface h5md_write_obs
+     module procedure h5md_write_obs_is
+     module procedure h5md_write_obs_i1
+     module procedure h5md_write_obs_i2
+     module procedure h5md_write_obs_ds
+     module procedure h5md_write_obs_d1
+     module procedure h5md_write_obs_d2
+  end interface
+
   
 contains
 
@@ -384,7 +403,7 @@ contains
     call h5dget_space_f(ID%d_id , file_space, h5_error)
     call h5sget_simple_extent_ndims_f(file_space, ndims, h5_error)
     if (ndims /= 3) stop 'wrong number of dimensions in h5md_load_trajectory_data'
-    call h5sget_simple_extend_dims_f(file_space, dims, max_dims, h5_error)
+    call h5sget_simple_extent_dims_f(file_space, dims, max_dims, h5_error)
     data_shape = shape(data)
     if (data_shape(1) /= dims(1) .or. data_shape(2) /= dims(2)) then
        stop 'wrong dimensions for data in h5md_load_trajectory_data'
@@ -511,87 +530,6 @@ contains
 
   end subroutine h5md_append_step_time
 
-  !> Sets up a h5md_t variable.
-  !! @param file_id ID of the file.
-  !! @param name Name of the observable
-  !! @param ID Resulting h5md_t variable
-  !! @param link_from Indicates if the step and time for this observable should be linked from another one.
-  !! @param is_int Indicates if the observable is integer.
-  subroutine h5md_create_obs(file_id, name, ID, link_from, is_int)
-    integer(HID_T), intent(inout) :: file_id
-    type(h5md_t), intent(out) :: ID
-    character(len=*), intent(in) :: name
-    character(len=*), intent(in), optional :: link_from
-    logical, intent(in), optional :: is_int
-
-    integer(HID_T) :: file_s, plist, g_id
-    integer(HSIZE_T) :: dims(1), max_dims(1), chunk_dims(1)
-    integer :: rank
-
-    call h5gcreate_f(file_id, 'observables/'//name, g_id, h5_error)
-
-    rank = 1
-    dims = (/ 0 /)
-    max_dims = (/ H5S_UNLIMITED_F /)
-    call h5screate_simple_f(rank, dims, file_s, h5_error, max_dims)
-    chunk_dims = (/ 128 /)
-    call h5pcreate_f(H5P_DATASET_CREATE_F, plist, h5_error)
-    call h5pset_chunk_f(plist, rank, chunk_dims, h5_error)
-    if (present(is_int) .and. is_int) then
-       call h5dcreate_f(g_id, 'samples', H5T_NATIVE_INTEGER, file_s, ID% d_id, h5_error, plist)
-    else
-       call h5dcreate_f(g_id, 'samples', H5T_NATIVE_DOUBLE, file_s, ID% d_id, h5_error, plist)
-    end if
-    call h5pclose_f(plist, h5_error)
-    call h5sclose_f(file_s, h5_error)
-
-    if (present(link_from)) then
-       call h5lcreate_hard_f(file_id, 'observables/'//link_from//'/step', g_id, 'step', h5_error)
-       call h5lcreate_hard_f(file_id, 'observables/'//link_from//'/time', g_id, 'time', h5_error)
-    else
-       call h5md_create_step_time(g_id)
-    end if
-
-    call h5dopen_f(g_id, 'step', ID% s_id, h5_error)
-    call h5dopen_f(g_id, 'time', ID% t_id, h5_error)
-
-    call h5gclose_f(g_id, h5_error)
-    
-  end subroutine h5md_create_obs
-
-  !> Takes a single value and appends it to the appropriate buffer.
-  !! if the buffer size is reached, the buffer is dumped to the file.
-  !! @param ID h5md_t variable.
-  !! @param value value of the observable.
-  !! @param present_step integer time step.
-  !! @param time real-valued time.
-  subroutine h5md_append_obs_value_d(ID, value, present_step, time)
-    type(h5md_t), intent(inout) :: ID
-    double precision, intent(in) :: value
-    integer, intent(in) :: present_step
-    double precision, intent(in) :: time
-
-    integer(HID_T) :: obs_s, mem_s
-    integer(HSIZE_T) :: dims(1), max_dims(1), start(1), num(1)
-    
-    dims(1) = 1
-    call h5screate_simple_f(1, dims, mem_s, h5_error)
-
-    call h5dget_space_f(ID% d_id , obs_s, h5_error)
-    call h5sget_simple_extent_dims_f(obs_s, dims, max_dims, h5_error)
-    call h5sclose_f(obs_s, h5_error)
-    start = dims ; num(1) = 1
-    dims(1) = dims(1) + 1
-    call h5dset_extent_f(ID% d_id, dims, h5_error)
-    call h5dget_space_f(ID% d_id , obs_s, h5_error)
-    call h5sselect_hyperslab_f(obs_s, H5S_SELECT_SET_F, start, num, h5_error)
-    call h5dwrite_f(ID% d_id, H5T_NATIVE_DOUBLE, value, num, h5_error, mem_space_id=mem_s, file_space_id=obs_s)
-    call h5sclose_f(obs_s, h5_error)
-    call h5sclose_f(mem_s, h5_error)
-
-    call h5md_append_step_time(ID% s_id, ID% t_id, present_step, time)
-       
-  end subroutine h5md_append_obs_value_d
 
   !> Close a h5md_obs variable.
   !! @param obs h5md_obs variable.
@@ -616,5 +554,571 @@ contains
     call h5dclose_f(ID% t_id, h5_error)
 
   end subroutine h5md_close_ID
+
+  !> Sets up a h5md_t variable.
+  !! @param file_id ID of the file.
+  !! @param name Name of the observable
+  !! @param ID Resulting h5md_t variable
+  !! @param link_from Indicates if the step and time for this observable should be linked from another one.
+  subroutine h5md_create_obs_i1(file_id, name, ID, data, link_from)
+    integer(HID_T), intent(inout) :: file_id
+    character(len=*), intent(in) :: name
+    type(h5md_t), intent(out) :: ID
+    integer, intent(in) :: data(:)
+    character(len=*), intent(in), optional :: link_from
+
+    integer(HID_T) :: file_s, plist, g_id
+    integer(HSIZE_T), allocatable :: dims(:), max_dims(:), chunk_dims(:)
+    integer :: rank
+
+    call h5gcreate_f(file_id, 'observables/'//name, g_id, h5_error)
+
+    rank = 2
+    allocate(dims(rank)) ; allocate(max_dims(rank)) ; allocate(chunk_dims(rank))
+
+    dims(1:1) = shape(data)
+    max_dims(1:1) = shape(data)
+    chunk_dims(1:1) = shape(data)
+    
+
+    dims(2)     = 0
+    max_dims(2) = H5S_UNLIMITED_F
+    call h5screate_simple_f(rank, dims, file_s, h5_error, max_dims)
+    chunk_dims(2) = 128
+    call h5pcreate_f(H5P_DATASET_CREATE_F, plist, h5_error)
+    call h5pset_chunk_f(plist, rank, chunk_dims, h5_error)
+    call h5dcreate_f(g_id, 'samples', H5T_NATIVE_INTEGER, file_s, ID% d_id, h5_error, plist)
+    call h5pclose_f(plist, h5_error)
+    call h5sclose_f(file_s, h5_error)
+
+    deallocate(dims) ; deallocate(max_dims) ; deallocate(chunk_dims)
+
+    if (present(link_from)) then
+       call h5lcreate_hard_f(file_id, 'observables/'//link_from//'/step', g_id, 'step', h5_error)
+       call h5lcreate_hard_f(file_id, 'observables/'//link_from//'/time', g_id, 'time', h5_error)
+    else
+       call h5md_create_step_time(g_id)
+    end if
+
+    call h5dopen_f(g_id, 'step', ID% s_id, h5_error)
+    call h5dopen_f(g_id, 'time', ID% t_id, h5_error)
+
+    call h5gclose_f(g_id, h5_error)
+
+  end subroutine h5md_create_obs_i1
+
+
+  !> Sets up a h5md_t variable.
+  !! @param file_id ID of the file.
+  !! @param name Name of the observable
+  !! @param ID Resulting h5md_t variable
+  !! @param link_from Indicates if the step and time for this observable should be linked from another one.
+  subroutine h5md_create_obs_is(file_id, name, ID, data, link_from)
+    integer(HID_T), intent(inout) :: file_id
+    character(len=*), intent(in) :: name
+    type(h5md_t), intent(out) :: ID
+    integer, intent(in) :: data
+    character(len=*), intent(in), optional :: link_from
+
+    integer(HID_T) :: file_s, plist, g_id
+    integer(HSIZE_T), allocatable :: dims(:), max_dims(:), chunk_dims(:)
+    integer :: rank
+
+    call h5gcreate_f(file_id, 'observables/'//name, g_id, h5_error)
+
+    rank = 1
+    allocate(dims(rank)) ; allocate(max_dims(rank)) ; allocate(chunk_dims(rank))
+
+    dims(1)     = 0
+    max_dims(1) = H5S_UNLIMITED_F
+    call h5screate_simple_f(rank, dims, file_s, h5_error, max_dims)
+    chunk_dims(1) = 128
+    call h5pcreate_f(H5P_DATASET_CREATE_F, plist, h5_error)
+    call h5pset_chunk_f(plist, rank, chunk_dims, h5_error)
+    call h5dcreate_f(g_id, 'samples', H5T_NATIVE_INTEGER, file_s, ID% d_id, h5_error, plist)
+    call h5pclose_f(plist, h5_error)
+    call h5sclose_f(file_s, h5_error)
+
+    deallocate(dims) ; deallocate(max_dims) ; deallocate(chunk_dims)
+
+    if (present(link_from)) then
+       call h5lcreate_hard_f(file_id, 'observables/'//link_from//'/step', g_id, 'step', h5_error)
+       call h5lcreate_hard_f(file_id, 'observables/'//link_from//'/time', g_id, 'time', h5_error)
+    else
+       call h5md_create_step_time(g_id)
+    end if
+
+    call h5dopen_f(g_id, 'step', ID% s_id, h5_error)
+    call h5dopen_f(g_id, 'time', ID% t_id, h5_error)
+
+    call h5gclose_f(g_id, h5_error)
+
+  end subroutine h5md_create_obs_is
+
+
+  !> Sets up a h5md_t variable.
+  !! @param file_id ID of the file.
+  !! @param name Name of the observable
+  !! @param ID Resulting h5md_t variable
+  !! @param link_from Indicates if the step and time for this observable should be linked from another one.
+  subroutine h5md_create_obs_i2(file_id, name, ID, data, link_from)
+    integer(HID_T), intent(inout) :: file_id
+    character(len=*), intent(in) :: name
+    type(h5md_t), intent(out) :: ID
+    integer, intent(in) :: data(:,:)
+    character(len=*), intent(in), optional :: link_from
+
+    integer(HID_T) :: file_s, plist, g_id
+    integer(HSIZE_T), allocatable :: dims(:), max_dims(:), chunk_dims(:)
+    integer :: rank
+
+    call h5gcreate_f(file_id, 'observables/'//name, g_id, h5_error)
+
+    rank = 3
+    allocate(dims(rank)) ; allocate(max_dims(rank)) ; allocate(chunk_dims(rank))
+
+    dims(1:2) = shape(data)
+    max_dims(1:2) = shape(data)
+    chunk_dims(1:2) = shape(data)
+    
+
+    dims(3)     = 0
+    max_dims(3) = H5S_UNLIMITED_F
+    call h5screate_simple_f(rank, dims, file_s, h5_error, max_dims)
+    chunk_dims(3) = 128
+    call h5pcreate_f(H5P_DATASET_CREATE_F, plist, h5_error)
+    call h5pset_chunk_f(plist, rank, chunk_dims, h5_error)
+    call h5dcreate_f(g_id, 'samples', H5T_NATIVE_INTEGER, file_s, ID% d_id, h5_error, plist)
+    call h5pclose_f(plist, h5_error)
+    call h5sclose_f(file_s, h5_error)
+
+    deallocate(dims) ; deallocate(max_dims) ; deallocate(chunk_dims)
+
+    if (present(link_from)) then
+       call h5lcreate_hard_f(file_id, 'observables/'//link_from//'/step', g_id, 'step', h5_error)
+       call h5lcreate_hard_f(file_id, 'observables/'//link_from//'/time', g_id, 'time', h5_error)
+    else
+       call h5md_create_step_time(g_id)
+    end if
+
+    call h5dopen_f(g_id, 'step', ID% s_id, h5_error)
+    call h5dopen_f(g_id, 'time', ID% t_id, h5_error)
+
+    call h5gclose_f(g_id, h5_error)
+
+  end subroutine h5md_create_obs_i2
+
+
+  !> Sets up a h5md_t variable.
+  !! @param file_id ID of the file.
+  !! @param name Name of the observable
+  !! @param ID Resulting h5md_t variable
+  !! @param link_from Indicates if the step and time for this observable should be linked from another one.
+  subroutine h5md_create_obs_d1(file_id, name, ID, data, link_from)
+    integer(HID_T), intent(inout) :: file_id
+    character(len=*), intent(in) :: name
+    type(h5md_t), intent(out) :: ID
+    double precision, intent(in) :: data(:)
+    character(len=*), intent(in), optional :: link_from
+
+    integer(HID_T) :: file_s, plist, g_id
+    integer(HSIZE_T), allocatable :: dims(:), max_dims(:), chunk_dims(:)
+    integer :: rank
+
+    call h5gcreate_f(file_id, 'observables/'//name, g_id, h5_error)
+
+    rank = 2
+    allocate(dims(rank)) ; allocate(max_dims(rank)) ; allocate(chunk_dims(rank))
+
+    dims(1:1) = shape(data)
+    max_dims(1:1) = shape(data)
+    chunk_dims(1:1) = shape(data)
+    
+
+    dims(2)     = 0
+    max_dims(2) = H5S_UNLIMITED_F
+    call h5screate_simple_f(rank, dims, file_s, h5_error, max_dims)
+    chunk_dims(2) = 128
+    call h5pcreate_f(H5P_DATASET_CREATE_F, plist, h5_error)
+    call h5pset_chunk_f(plist, rank, chunk_dims, h5_error)
+    call h5dcreate_f(g_id, 'samples', H5T_NATIVE_DOUBLE, file_s, ID% d_id, h5_error, plist)
+    call h5pclose_f(plist, h5_error)
+    call h5sclose_f(file_s, h5_error)
+
+    deallocate(dims) ; deallocate(max_dims) ; deallocate(chunk_dims)
+
+    if (present(link_from)) then
+       call h5lcreate_hard_f(file_id, 'observables/'//link_from//'/step', g_id, 'step', h5_error)
+       call h5lcreate_hard_f(file_id, 'observables/'//link_from//'/time', g_id, 'time', h5_error)
+    else
+       call h5md_create_step_time(g_id)
+    end if
+
+    call h5dopen_f(g_id, 'step', ID% s_id, h5_error)
+    call h5dopen_f(g_id, 'time', ID% t_id, h5_error)
+
+    call h5gclose_f(g_id, h5_error)
+
+  end subroutine h5md_create_obs_d1
+
+
+  !> Sets up a h5md_t variable.
+  !! @param file_id ID of the file.
+  !! @param name Name of the observable
+  !! @param ID Resulting h5md_t variable
+  !! @param link_from Indicates if the step and time for this observable should be linked from another one.
+  subroutine h5md_create_obs_ds(file_id, name, ID, data, link_from)
+    integer(HID_T), intent(inout) :: file_id
+    character(len=*), intent(in) :: name
+    type(h5md_t), intent(out) :: ID
+    double precision, intent(in) :: data
+    character(len=*), intent(in), optional :: link_from
+
+    integer(HID_T) :: file_s, plist, g_id
+    integer(HSIZE_T), allocatable :: dims(:), max_dims(:), chunk_dims(:)
+    integer :: rank
+
+    call h5gcreate_f(file_id, 'observables/'//name, g_id, h5_error)
+
+    rank = 1
+    allocate(dims(rank)) ; allocate(max_dims(rank)) ; allocate(chunk_dims(rank))
+
+    dims(1)     = 0
+    max_dims(1) = H5S_UNLIMITED_F
+    call h5screate_simple_f(rank, dims, file_s, h5_error, max_dims)
+    chunk_dims(1) = 128
+    call h5pcreate_f(H5P_DATASET_CREATE_F, plist, h5_error)
+    call h5pset_chunk_f(plist, rank, chunk_dims, h5_error)
+    call h5dcreate_f(g_id, 'samples', H5T_NATIVE_DOUBLE, file_s, ID% d_id, h5_error, plist)
+    call h5pclose_f(plist, h5_error)
+    call h5sclose_f(file_s, h5_error)
+
+    deallocate(dims) ; deallocate(max_dims) ; deallocate(chunk_dims)
+
+    if (present(link_from)) then
+       call h5lcreate_hard_f(file_id, 'observables/'//link_from//'/step', g_id, 'step', h5_error)
+       call h5lcreate_hard_f(file_id, 'observables/'//link_from//'/time', g_id, 'time', h5_error)
+    else
+       call h5md_create_step_time(g_id)
+    end if
+
+    call h5dopen_f(g_id, 'step', ID% s_id, h5_error)
+    call h5dopen_f(g_id, 'time', ID% t_id, h5_error)
+
+    call h5gclose_f(g_id, h5_error)
+
+  end subroutine h5md_create_obs_ds
+
+
+  !> Sets up a h5md_t variable.
+  !! @param file_id ID of the file.
+  !! @param name Name of the observable
+  !! @param ID Resulting h5md_t variable
+  !! @param link_from Indicates if the step and time for this observable should be linked from another one.
+  subroutine h5md_create_obs_d2(file_id, name, ID, data, link_from)
+    integer(HID_T), intent(inout) :: file_id
+    character(len=*), intent(in) :: name
+    type(h5md_t), intent(out) :: ID
+    double precision, intent(in) :: data(:,:)
+    character(len=*), intent(in), optional :: link_from
+
+    integer(HID_T) :: file_s, plist, g_id
+    integer(HSIZE_T), allocatable :: dims(:), max_dims(:), chunk_dims(:)
+    integer :: rank
+
+    call h5gcreate_f(file_id, 'observables/'//name, g_id, h5_error)
+
+    rank = 3
+    allocate(dims(rank)) ; allocate(max_dims(rank)) ; allocate(chunk_dims(rank))
+
+    dims(1:2) = shape(data)
+    max_dims(1:2) = shape(data)
+    chunk_dims(1:2) = shape(data)
+    
+
+    dims(3)     = 0
+    max_dims(3) = H5S_UNLIMITED_F
+    call h5screate_simple_f(rank, dims, file_s, h5_error, max_dims)
+    chunk_dims(3) = 128
+    call h5pcreate_f(H5P_DATASET_CREATE_F, plist, h5_error)
+    call h5pset_chunk_f(plist, rank, chunk_dims, h5_error)
+    call h5dcreate_f(g_id, 'samples', H5T_NATIVE_DOUBLE, file_s, ID% d_id, h5_error, plist)
+    call h5pclose_f(plist, h5_error)
+    call h5sclose_f(file_s, h5_error)
+
+    deallocate(dims) ; deallocate(max_dims) ; deallocate(chunk_dims)
+
+    if (present(link_from)) then
+       call h5lcreate_hard_f(file_id, 'observables/'//link_from//'/step', g_id, 'step', h5_error)
+       call h5lcreate_hard_f(file_id, 'observables/'//link_from//'/time', g_id, 'time', h5_error)
+    else
+       call h5md_create_step_time(g_id)
+    end if
+
+    call h5dopen_f(g_id, 'step', ID% s_id, h5_error)
+    call h5dopen_f(g_id, 'time', ID% t_id, h5_error)
+
+    call h5gclose_f(g_id, h5_error)
+
+  end subroutine h5md_create_obs_d2
+
+  !> Takes a single value and appends it to the appropriate dataset.
+  !! @param ID h5md_t variable.
+  !! @param data value of the observable.
+  !! @param present_step integer time step.
+  !! @param time real-valued time.
+  subroutine h5md_write_obs_i1(ID, data, present_step, time)
+    type(h5md_t), intent(inout) :: ID
+    integer, intent(in) :: data(:)
+    integer, intent(in) :: present_step
+    double precision, intent(in) :: time
+
+    integer(HID_T) :: obs_s, mem_s
+    integer(HSIZE_T), allocatable :: dims(:), max_dims(:), start(:), num(:)
+    integer :: rank
+
+    rank = 2
+    allocate(dims(rank)) ; allocate(max_dims(rank)) ; allocate(start(rank)) ; allocate(num(rank))
+
+    dims(1:1) = shape(data)
+
+    call h5screate_simple_f(1, dims, mem_s, h5_error)
+
+    call h5dget_space_f(ID% d_id , obs_s, h5_error)
+    call h5sget_simple_extent_dims_f(obs_s, dims, max_dims, h5_error)
+    call h5sclose_f(obs_s, h5_error)
+
+    start(1:1) = 0
+    num(1:1) = dims(1:1)
+    start(2) = dims(2)
+    num(2) = 1
+    dims(2) = dims(2) + 1
+    call h5dset_extent_f(ID% d_id, dims, h5_error)
+    call h5dget_space_f(ID% d_id , obs_s, h5_error)
+    call h5sselect_hyperslab_f(obs_s, H5S_SELECT_SET_F, start, num, h5_error)
+    call h5dwrite_f(ID% d_id, H5T_NATIVE_INTEGER, data, num, h5_error, mem_space_id=mem_s, file_space_id=obs_s)
+    call h5sclose_f(obs_s, h5_error)
+    call h5sclose_f(mem_s, h5_error)
+
+    deallocate(dims) ; deallocate(max_dims) ; deallocate(start) ; deallocate(num)
+
+    call h5md_append_step_time(ID% s_id, ID% t_id, present_step, time)
+       
+  end subroutine h5md_write_obs_i1
+
+  !> Takes a single value and appends it to the appropriate dataset.
+  !! @param ID h5md_t variable.
+  !! @param data value of the observable.
+  !! @param present_step integer time step.
+  !! @param time real-valued time.
+  subroutine h5md_write_obs_is(ID, data, present_step, time)
+    type(h5md_t), intent(inout) :: ID
+    integer, intent(in) :: data
+    integer, intent(in) :: present_step
+    double precision, intent(in) :: time
+
+    integer(HID_T) :: obs_s, mem_s
+    integer(HSIZE_T), allocatable :: dims(:), max_dims(:), start(:), num(:)
+    integer :: rank
+
+    rank = 1
+    allocate(dims(rank)) ; allocate(max_dims(rank)) ; allocate(start(rank)) ; allocate(num(rank))
+
+    dims(1) = 1
+
+    call h5screate_simple_f(1, dims, mem_s, h5_error)
+
+    call h5dget_space_f(ID% d_id , obs_s, h5_error)
+    call h5sget_simple_extent_dims_f(obs_s, dims, max_dims, h5_error)
+    call h5sclose_f(obs_s, h5_error)
+    start(1) = dims(1)
+    num(1) = 1
+    dims(1) = dims(1) + 1
+    call h5dset_extent_f(ID% d_id, dims, h5_error)
+    call h5dget_space_f(ID% d_id , obs_s, h5_error)
+    call h5sselect_hyperslab_f(obs_s, H5S_SELECT_SET_F, start, num, h5_error)
+    call h5dwrite_f(ID% d_id, H5T_NATIVE_INTEGER, data, num, h5_error, mem_space_id=mem_s, file_space_id=obs_s)
+    call h5sclose_f(obs_s, h5_error)
+    call h5sclose_f(mem_s, h5_error)
+
+    deallocate(dims) ; deallocate(max_dims) ; deallocate(start) ; deallocate(num)
+
+    call h5md_append_step_time(ID% s_id, ID% t_id, present_step, time)
+       
+  end subroutine h5md_write_obs_is
+
+  !> Takes a single value and appends it to the appropriate dataset.
+  !! @param ID h5md_t variable.
+  !! @param data value of the observable.
+  !! @param present_step integer time step.
+  !! @param time real-valued time.
+  subroutine h5md_write_obs_i2(ID, data, present_step, time)
+    type(h5md_t), intent(inout) :: ID
+    integer, intent(in) :: data(:,:)
+    integer, intent(in) :: present_step
+    double precision, intent(in) :: time
+
+    integer(HID_T) :: obs_s, mem_s
+    integer(HSIZE_T), allocatable :: dims(:), max_dims(:), start(:), num(:)
+    integer :: rank
+
+    rank = 3
+    allocate(dims(rank)) ; allocate(max_dims(rank)) ; allocate(start(rank)) ; allocate(num(rank))
+
+    dims(1:2) = shape(data)
+
+    call h5screate_simple_f(1, dims, mem_s, h5_error)
+
+    call h5dget_space_f(ID% d_id , obs_s, h5_error)
+    call h5sget_simple_extent_dims_f(obs_s, dims, max_dims, h5_error)
+    call h5sclose_f(obs_s, h5_error)
+
+    start(1:2) = 0
+    num(1:2) = dims(1:2)
+    start(3) = dims(3)
+    num(3) = 1
+    dims(3) = dims(3) + 1
+    call h5dset_extent_f(ID% d_id, dims, h5_error)
+    call h5dget_space_f(ID% d_id , obs_s, h5_error)
+    call h5sselect_hyperslab_f(obs_s, H5S_SELECT_SET_F, start, num, h5_error)
+    call h5dwrite_f(ID% d_id, H5T_NATIVE_INTEGER, data, num, h5_error, mem_space_id=mem_s, file_space_id=obs_s)
+    call h5sclose_f(obs_s, h5_error)
+    call h5sclose_f(mem_s, h5_error)
+
+    deallocate(dims) ; deallocate(max_dims) ; deallocate(start) ; deallocate(num)
+
+    call h5md_append_step_time(ID% s_id, ID% t_id, present_step, time)
+       
+  end subroutine h5md_write_obs_i2
+
+  !> Takes a single value and appends it to the appropriate dataset.
+  !! @param ID h5md_t variable.
+  !! @param data value of the observable.
+  !! @param present_step integer time step.
+  !! @param time real-valued time.
+  subroutine h5md_write_obs_d1(ID, data, present_step, time)
+    type(h5md_t), intent(inout) :: ID
+    double precision, intent(in) :: data(:)
+    integer, intent(in) :: present_step
+    double precision, intent(in) :: time
+
+    integer(HID_T) :: obs_s, mem_s
+    integer(HSIZE_T), allocatable :: dims(:), max_dims(:), start(:), num(:)
+    integer :: rank
+
+    rank = 2
+    allocate(dims(rank)) ; allocate(max_dims(rank)) ; allocate(start(rank)) ; allocate(num(rank))
+
+    dims(1:1) = shape(data)
+
+    call h5screate_simple_f(1, dims, mem_s, h5_error)
+
+    call h5dget_space_f(ID% d_id , obs_s, h5_error)
+    call h5sget_simple_extent_dims_f(obs_s, dims, max_dims, h5_error)
+    call h5sclose_f(obs_s, h5_error)
+
+    start(1:1) = 0
+    num(1:1) = dims(1:1)
+    start(2) = dims(2)
+    num(2) = 1
+    dims(2) = dims(2) + 1
+    call h5dset_extent_f(ID% d_id, dims, h5_error)
+    call h5dget_space_f(ID% d_id , obs_s, h5_error)
+    call h5sselect_hyperslab_f(obs_s, H5S_SELECT_SET_F, start, num, h5_error)
+    call h5dwrite_f(ID% d_id, H5T_NATIVE_DOUBLE, data, num, h5_error, mem_space_id=mem_s, file_space_id=obs_s)
+    call h5sclose_f(obs_s, h5_error)
+    call h5sclose_f(mem_s, h5_error)
+
+    deallocate(dims) ; deallocate(max_dims) ; deallocate(start) ; deallocate(num)
+
+    call h5md_append_step_time(ID% s_id, ID% t_id, present_step, time)
+       
+  end subroutine h5md_write_obs_d1
+
+  !> Takes a single value and appends it to the appropriate dataset.
+  !! @param ID h5md_t variable.
+  !! @param data value of the observable.
+  !! @param present_step integer time step.
+  !! @param time real-valued time.
+  subroutine h5md_write_obs_ds(ID, data, present_step, time)
+    type(h5md_t), intent(inout) :: ID
+    double precision, intent(in) :: data
+    integer, intent(in) :: present_step
+    double precision, intent(in) :: time
+
+    integer(HID_T) :: obs_s, mem_s
+    integer(HSIZE_T), allocatable :: dims(:), max_dims(:), start(:), num(:)
+    integer :: rank
+
+    rank = 1
+    allocate(dims(rank)) ; allocate(max_dims(rank)) ; allocate(start(rank)) ; allocate(num(rank))
+
+    dims(1) = 1
+
+    call h5screate_simple_f(1, dims, mem_s, h5_error)
+
+    call h5dget_space_f(ID% d_id , obs_s, h5_error)
+    call h5sget_simple_extent_dims_f(obs_s, dims, max_dims, h5_error)
+    call h5sclose_f(obs_s, h5_error)
+    start(1) = dims(1)
+    num(1) = 1
+    dims(1) = dims(1) + 1
+    call h5dset_extent_f(ID% d_id, dims, h5_error)
+    call h5dget_space_f(ID% d_id , obs_s, h5_error)
+    call h5sselect_hyperslab_f(obs_s, H5S_SELECT_SET_F, start, num, h5_error)
+    call h5dwrite_f(ID% d_id, H5T_NATIVE_DOUBLE, data, num, h5_error, mem_space_id=mem_s, file_space_id=obs_s)
+    call h5sclose_f(obs_s, h5_error)
+    call h5sclose_f(mem_s, h5_error)
+
+    deallocate(dims) ; deallocate(max_dims) ; deallocate(start) ; deallocate(num)
+
+    call h5md_append_step_time(ID% s_id, ID% t_id, present_step, time)
+       
+  end subroutine h5md_write_obs_ds
+
+  !> Takes a single value and appends it to the appropriate dataset.
+  !! @param ID h5md_t variable.
+  !! @param data value of the observable.
+  !! @param present_step integer time step.
+  !! @param time real-valued time.
+  subroutine h5md_write_obs_d2(ID, data, present_step, time)
+    type(h5md_t), intent(inout) :: ID
+    double precision, intent(in) :: data(:,:)
+    integer, intent(in) :: present_step
+    double precision, intent(in) :: time
+
+    integer(HID_T) :: obs_s, mem_s
+    integer(HSIZE_T), allocatable :: dims(:), max_dims(:), start(:), num(:)
+    integer :: rank
+
+    rank = 3
+    allocate(dims(rank)) ; allocate(max_dims(rank)) ; allocate(start(rank)) ; allocate(num(rank))
+
+    dims(1:2) = shape(data)
+
+    call h5screate_simple_f(1, dims, mem_s, h5_error)
+
+    call h5dget_space_f(ID% d_id , obs_s, h5_error)
+    call h5sget_simple_extent_dims_f(obs_s, dims, max_dims, h5_error)
+    call h5sclose_f(obs_s, h5_error)
+
+    start(1:2) = 0
+    num(1:2) = dims(1:2)
+    start(3) = dims(3)
+    num(3) = 1
+    dims(3) = dims(3) + 1
+    call h5dset_extent_f(ID% d_id, dims, h5_error)
+    call h5dget_space_f(ID% d_id , obs_s, h5_error)
+    call h5sselect_hyperslab_f(obs_s, H5S_SELECT_SET_F, start, num, h5_error)
+    call h5dwrite_f(ID% d_id, H5T_NATIVE_DOUBLE, data, num, h5_error, mem_space_id=mem_s, file_space_id=obs_s)
+    call h5sclose_f(obs_s, h5_error)
+    call h5sclose_f(mem_s, h5_error)
+
+    deallocate(dims) ; deallocate(max_dims) ; deallocate(start) ; deallocate(num)
+
+    call h5md_append_step_time(ID% s_id, ID% t_id, present_step, time)
+       
+  end subroutine h5md_write_obs_d2
+
 
 end module h5md
