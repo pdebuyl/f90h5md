@@ -226,7 +226,8 @@ contains
     integer(HSIZE_T) :: dims(3), max_dims(3), chunk_dims(3)
     integer(HID_T) :: traj_g_id, g_id, s_id, plist
 
-    if ( (trajectory_name .ne. 'position') .and. (trajectory_name .ne. 'velocity') .and. (trajectory_name .ne. 'force') .and. (trajectory_name .ne. 'species') ) then
+    if ( (trajectory_name .ne. 'position') .and. (trajectory_name .ne. 'velocity') &
+         .and. (trajectory_name .ne. 'force') .and. (trajectory_name .ne. 'species') ) then
        write(*,*) 'non conforming trajectory name in h5md_add_trajectory_data'
        stop
     end if
