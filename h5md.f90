@@ -488,12 +488,15 @@ contains
        call h5sclose_f(mem_s, h5_error)
     end if
 
+    call h5sclose_f(file_s, h5_error)
+
     ! check last
     if (last_step(1) .gt. step) then ! if last > present_step -> error
        write(*,*) 'error, last step is bigger than present step'
     else if (last_step(1) .lt. step) then ! else if last < present_step -> extend step and append present_step, same for time
        ! add step value to the end of the step dataset
 
+       call h5dget_space_f(s_id, file_s, h5_error)
        dims(1) = 1
        call h5screate_simple_f(1, dims, mem_s, h5_error)
        call h5sget_simple_extent_dims_f(file_s, dims, max_dims, h5_error)
