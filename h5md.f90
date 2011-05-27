@@ -51,6 +51,16 @@ module h5md
      module procedure h5md_write_obs_d2
   end interface
 
+  !> Interface for the overloaded parameter routines.
+  interface h5md_write_par
+     module procedure h5md_write_par_is
+     module procedure h5md_write_par_i1
+     module procedure h5md_write_par_i2
+     module procedure h5md_write_par_ds
+     module procedure h5md_write_par_d1
+     module procedure h5md_write_par_d2
+     module procedure h5md_write_par_cs
+  end interface
   
 contains
 
@@ -58,7 +68,7 @@ contains
   !!
   !! Creates the '/h5md' group and gives it the attributes 'creator' and 
   !! 'version'. currently, only supports creating a new file.
-  !! also creates 'trajectory' and 'observables' groups.
+  !! also creates 'trajectory', 'observables' and 'parameters' groups.
   !! @param file_id the returned hdf5 location of the file.
   !! @param filename name of the file.
   !! @prog_name name that appears in the 'creator' global attribute.
@@ -131,6 +141,9 @@ contains
     call h5gclose_f(g_id, h5_error)
 
     call h5gcreate_f(file_id, 'observables', g_id, h5_error)
+    call h5gclose_f(g_id, h5_error)
+
+    call h5gcreate_f(file_id, 'parameters', g_id, h5_error)
     call h5gclose_f(g_id, h5_error)
 
   end subroutine h5md_create_file
@@ -1123,6 +1136,219 @@ contains
     call h5md_append_step_time(ID% s_id, ID% t_id, present_step, time)
        
   end subroutine h5md_write_obs_d2
+
+
+  !> Writes a parameter to the parameter group.
+  !! @param file_id hdf5 file ID.
+  !! @param name name of the parameter.
+  !! @param data value of the parameter.
+  subroutine h5md_write_par_i1(file_id, name, data)
+    integer(HID_T), intent(in) :: file_id
+    character(len=*), intent(in) :: name
+    integer, intent(in) :: data(:)
+
+    integer(HID_T) :: par_d, par_s
+    integer(HSIZE_T), allocatable :: dims(:)
+    integer(HSIZE_T) :: a_size(1)
+    integer :: rank
+
+    rank = 1
+    if (rank>0) allocate(dims(rank))
+
+    dims = shape(data)
+    call h5screate_simple_f(1, dims, par_s, h5_error)
+
+    call h5dcreate_f(file_id, 'parameters/'//name, H5T_NATIVE_INTEGER, par_s, par_d, h5_error)
+
+    call h5dwrite_f(par_d, H5T_NATIVE_INTEGER, data, dims, h5_error)
+    call h5sclose_f(par_s, h5_error)
+
+    if (rank>0) deallocate(dims)
+
+       
+  end subroutine h5md_write_par_i1
+
+  !> Writes a parameter to the parameter group.
+  !! @param file_id hdf5 file ID.
+  !! @param name name of the parameter.
+  !! @param data value of the parameter.
+  subroutine h5md_write_par_is(file_id, name, data)
+    integer(HID_T), intent(in) :: file_id
+    character(len=*), intent(in) :: name
+    integer, intent(in) :: data
+
+    integer(HID_T) :: par_d, par_s
+    integer(HSIZE_T), allocatable :: dims(:)
+    integer(HSIZE_T) :: a_size(1)
+    integer :: rank
+
+    rank = 0
+    if (rank>0) allocate(dims(rank))
+
+    call h5screate_f(H5S_SCALAR_F, par_s, h5_error)
+
+    call h5dcreate_f(file_id, 'parameters/'//name, H5T_NATIVE_INTEGER, par_s, par_d, h5_error)
+
+    call h5dwrite_f(par_d, H5T_NATIVE_INTEGER, data, dims, h5_error)
+    call h5sclose_f(par_s, h5_error)
+
+    if (rank>0) deallocate(dims)
+
+       
+  end subroutine h5md_write_par_is
+
+  !> Writes a parameter to the parameter group.
+  !! @param file_id hdf5 file ID.
+  !! @param name name of the parameter.
+  !! @param data value of the parameter.
+  subroutine h5md_write_par_i2(file_id, name, data)
+    integer(HID_T), intent(in) :: file_id
+    character(len=*), intent(in) :: name
+    integer, intent(in) :: data(:,:)
+
+    integer(HID_T) :: par_d, par_s
+    integer(HSIZE_T), allocatable :: dims(:)
+    integer(HSIZE_T) :: a_size(1)
+    integer :: rank
+
+    rank = 2
+    if (rank>0) allocate(dims(rank))
+
+    dims = shape(data)
+    call h5screate_simple_f(2, dims, par_s, h5_error)
+
+    call h5dcreate_f(file_id, 'parameters/'//name, H5T_NATIVE_INTEGER, par_s, par_d, h5_error)
+
+    call h5dwrite_f(par_d, H5T_NATIVE_INTEGER, data, dims, h5_error)
+    call h5sclose_f(par_s, h5_error)
+
+    if (rank>0) deallocate(dims)
+
+       
+  end subroutine h5md_write_par_i2
+
+  !> Writes a parameter to the parameter group.
+  !! @param file_id hdf5 file ID.
+  !! @param name name of the parameter.
+  !! @param data value of the parameter.
+  subroutine h5md_write_par_cs(file_id, name, data)
+    integer(HID_T), intent(in) :: file_id
+    character(len=*), intent(in) :: name
+    character(len=*), intent(in) :: data
+
+    integer(HID_T) :: par_d, par_s
+    integer(HSIZE_T), allocatable :: dims(:)
+    integer(HSIZE_T) :: a_size(1)
+    integer :: rank
+    integer(HID_T) :: a_type
+
+    rank = 0
+    if (rank>0) allocate(dims(rank))
+
+    a_size(1) = len(data)
+    call h5tcopy_f(H5T_NATIVE_CHARACTER, a_type, h5_error)
+    call h5tset_size_f(a_type, a_size(1), h5_error)
+    call h5screate_f(H5S_SCALAR_F, par_s, h5_error)
+
+    call h5dcreate_f(file_id, 'parameters/'//name, a_type, par_s, par_d, h5_error)
+
+    call h5dwrite_f(par_d, a_type, data, dims, h5_error)
+    call h5sclose_f(par_s, h5_error)
+
+    if (rank>0) deallocate(dims)
+
+       
+  end subroutine h5md_write_par_cs
+
+  !> Writes a parameter to the parameter group.
+  !! @param file_id hdf5 file ID.
+  !! @param name name of the parameter.
+  !! @param data value of the parameter.
+  subroutine h5md_write_par_d1(file_id, name, data)
+    integer(HID_T), intent(in) :: file_id
+    character(len=*), intent(in) :: name
+    double precision, intent(in) :: data(:)
+
+    integer(HID_T) :: par_d, par_s
+    integer(HSIZE_T), allocatable :: dims(:)
+    integer(HSIZE_T) :: a_size(1)
+    integer :: rank
+
+    rank = 1
+    if (rank>0) allocate(dims(rank))
+
+    dims = shape(data)
+    call h5screate_simple_f(1, dims, par_s, h5_error)
+
+    call h5dcreate_f(file_id, 'parameters/'//name, H5T_NATIVE_DOUBLE, par_s, par_d, h5_error)
+
+    call h5dwrite_f(par_d, H5T_NATIVE_DOUBLE, data, dims, h5_error)
+    call h5sclose_f(par_s, h5_error)
+
+    if (rank>0) deallocate(dims)
+
+       
+  end subroutine h5md_write_par_d1
+
+  !> Writes a parameter to the parameter group.
+  !! @param file_id hdf5 file ID.
+  !! @param name name of the parameter.
+  !! @param data value of the parameter.
+  subroutine h5md_write_par_ds(file_id, name, data)
+    integer(HID_T), intent(in) :: file_id
+    character(len=*), intent(in) :: name
+    double precision, intent(in) :: data
+
+    integer(HID_T) :: par_d, par_s
+    integer(HSIZE_T), allocatable :: dims(:)
+    integer(HSIZE_T) :: a_size(1)
+    integer :: rank
+
+    rank = 0
+    if (rank>0) allocate(dims(rank))
+
+    call h5screate_f(H5S_SCALAR_F, par_s, h5_error)
+
+    call h5dcreate_f(file_id, 'parameters/'//name, H5T_NATIVE_DOUBLE, par_s, par_d, h5_error)
+
+    call h5dwrite_f(par_d, H5T_NATIVE_DOUBLE, data, dims, h5_error)
+    call h5sclose_f(par_s, h5_error)
+
+    if (rank>0) deallocate(dims)
+
+       
+  end subroutine h5md_write_par_ds
+
+  !> Writes a parameter to the parameter group.
+  !! @param file_id hdf5 file ID.
+  !! @param name name of the parameter.
+  !! @param data value of the parameter.
+  subroutine h5md_write_par_d2(file_id, name, data)
+    integer(HID_T), intent(in) :: file_id
+    character(len=*), intent(in) :: name
+    double precision, intent(in) :: data(:,:)
+
+    integer(HID_T) :: par_d, par_s
+    integer(HSIZE_T), allocatable :: dims(:)
+    integer(HSIZE_T) :: a_size(1)
+    integer :: rank
+
+    rank = 2
+    if (rank>0) allocate(dims(rank))
+
+    dims = shape(data)
+    call h5screate_simple_f(2, dims, par_s, h5_error)
+
+    call h5dcreate_f(file_id, 'parameters/'//name, H5T_NATIVE_DOUBLE, par_s, par_d, h5_error)
+
+    call h5dwrite_f(par_d, H5T_NATIVE_DOUBLE, data, dims, h5_error)
+    call h5sclose_f(par_s, h5_error)
+
+    if (rank>0) deallocate(dims)
+
+       
+  end subroutine h5md_write_par_d2
+
 
 
 end module h5md
