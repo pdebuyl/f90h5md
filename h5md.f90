@@ -54,6 +54,12 @@ module h5md
   !> Interface for the overloaded parameter routines.
   !! Accepts an integer, double precision or logical parameter that is a scalar or 
   !! a rank 1 or 2 array and also a single string of characters.
+  !! \code
+  !! ! for a double precision variable timestep
+  !! ! and an open H5MD file file_id
+  !! timestep = 0.1d0
+  !! call h5md_write_par(file_id, 'timestep', timestep)
+  !! \endcode
   interface h5md_write_par
      module procedure h5md_write_par_is
      module procedure h5md_write_par_i1
@@ -76,7 +82,7 @@ contains
   !! also creates 'trajectory', 'observables' and 'parameters' groups.
   !! @param file_id the returned hdf5 location of the file.
   !! @param filename name of the file.
-  !! @prog_name name that appears in the 'creator' global attribute.
+  !! @param prog_name name that appears in the 'creator' global attribute.
   subroutine h5md_create_file(file_id, filename, prog_name)
     integer(HID_T), intent(out) :: file_id
     character(len=*), intent(in) :: filename, prog_name
@@ -173,6 +179,7 @@ contains
   end subroutine h5md_open_file
 
   !> Adds a trajectory group in a h5md file
+  !! @param file_id the HDF5 ID of the file.
   !! @param group_name name of a subgroup of 'trajectory'.
   subroutine h5md_create_trajectory_group(file_id, group_name)
     integer(HID_T), intent(inout) :: file_id
@@ -222,10 +229,12 @@ contains
   end subroutine h5md_create_step_time
 
   !> Adds a trajectory dataset to a trajectory group of name trajectory_name
-  !! @param group_name optional group name for the trajectory group
+  !! @param file_id the HDF5 ID of the file.
   !! @param trajectory_name can be 'position', 'velocity', 'force' or 'species'
   !! @param N the number of atoms
   !! @param D the spatial dimension
+  !! @param ID the returned h5md_t value of the created dataset.
+  !! @param group_name optional group name for the trajectory group
   !! @param species_react optional argument. if set to .true., 'species' will be
   !! time dependent, if set to .false., 'species' will not possess the time
   !! dimension
@@ -363,10 +372,11 @@ contains
   end subroutine h5md_open_trajectory
 
   !> adds a "time frame" to a trajectory
-  !! @param traj_id is the trajectory dataset
-  !! @param data is the actual data of dim (D,N)
-  !! @param step is the integer step of simulation. if the linked 'step' dataset's latest value
+  !! @param ID is the trajectory h5md_t reference.
+  !! @param data is the actual data of dim (D,N).
+  !! @param present_step is the integer step of simulation. if the linked 'step' dataset's latest value
   !! is present_step, 'step' and 'time' are not updated. Else, they are.
+  !! @param time is the real value of the simulation time.
   !! @todo should be doubled for integer and real values, with explicit interfacing
   subroutine h5md_write_trajectory_data_d(ID, data, present_step, time)
     type(h5md_t), intent(inout) :: ID
@@ -581,6 +591,7 @@ contains
   !! @param file_id ID of the file.
   !! @param name Name of the observable
   !! @param ID Resulting h5md_t variable
+  !! @param data The data that will fit into the observable.
   !! @param link_from Indicates if the step and time for this observable should be linked from another one.
   subroutine h5md_create_obs_i1(file_id, name, ID, data, link_from)
     integer(HID_T), intent(inout) :: file_id
@@ -634,6 +645,7 @@ contains
   !! @param file_id ID of the file.
   !! @param name Name of the observable
   !! @param ID Resulting h5md_t variable
+  !! @param data The data that will fit into the observable.
   !! @param link_from Indicates if the step and time for this observable should be linked from another one.
   subroutine h5md_create_obs_is(file_id, name, ID, data, link_from)
     integer(HID_T), intent(inout) :: file_id
@@ -682,6 +694,7 @@ contains
   !! @param file_id ID of the file.
   !! @param name Name of the observable
   !! @param ID Resulting h5md_t variable
+  !! @param data The data that will fit into the observable.
   !! @param link_from Indicates if the step and time for this observable should be linked from another one.
   subroutine h5md_create_obs_i2(file_id, name, ID, data, link_from)
     integer(HID_T), intent(inout) :: file_id
@@ -735,6 +748,7 @@ contains
   !! @param file_id ID of the file.
   !! @param name Name of the observable
   !! @param ID Resulting h5md_t variable
+  !! @param data The data that will fit into the observable.
   !! @param link_from Indicates if the step and time for this observable should be linked from another one.
   subroutine h5md_create_obs_d1(file_id, name, ID, data, link_from)
     integer(HID_T), intent(inout) :: file_id
@@ -788,6 +802,7 @@ contains
   !! @param file_id ID of the file.
   !! @param name Name of the observable
   !! @param ID Resulting h5md_t variable
+  !! @param data The data that will fit into the observable.
   !! @param link_from Indicates if the step and time for this observable should be linked from another one.
   subroutine h5md_create_obs_ds(file_id, name, ID, data, link_from)
     integer(HID_T), intent(inout) :: file_id
@@ -836,6 +851,7 @@ contains
   !! @param file_id ID of the file.
   !! @param name Name of the observable
   !! @param ID Resulting h5md_t variable
+  !! @param data The data that will fit into the observable.
   !! @param link_from Indicates if the step and time for this observable should be linked from another one.
   subroutine h5md_create_obs_d2(file_id, name, ID, data, link_from)
     integer(HID_T), intent(inout) :: file_id
