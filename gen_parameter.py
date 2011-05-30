@@ -3,11 +3,13 @@
 types = dict()
 types['i'] = 'integer'
 types['d'] = 'double precision'
+types['l'] = 'logical'
 types['c'] = 'character'
 H5T = dict()
 H5T['i'] = 'H5T_NATIVE_INTEGER'
 H5T['d'] = 'H5T_NATIVE_DOUBLE'
 H5T['c'] = 'a_type'
+H5T['l'] = 'H5T_NATIVE_INTEGER'
 dims = dict()
 dims['s'] = ''
 dims['1'] = '(:)'
@@ -43,6 +45,36 @@ for t_k,t_v in types.iteritems():
         if (t_k=='c'):
             s+="""
     integer(HID_T) :: a_type"""
+        if (t_k=='l'):
+            if (d_k=='s'):
+                s+="""
+    integer :: data_int
+    if (data) then
+        data_int = 1
+    else
+        data_int = 0
+    end if
+"""
+            elif(d_k=='1'):
+                s+="""
+    integer, allocatable :: data_int%s
+    allocate(data_int(size(data)))
+    where (data)
+        data_int = 1
+    elsewhere
+        data_int=0
+    endwhere
+""" % (d_v,)
+            elif(d_k=='2'):
+                s+="""
+    integer, allocatable :: data_int%s
+    allocate(data_int(size(data,dim=1),size(data,dim=2)))
+    where (data)
+        data_int = 1
+    elsewhere
+        data_int=0
+    endwhere
+""" % (d_v,)
         s+="""
 
     rank = %i
@@ -70,14 +102,25 @@ for t_k,t_v in types.iteritems():
     call h5dcreate_f(file_id, 'parameters/'//name, %s, par_s, par_d, h5_error)
 """ % (H5T[t_k], )
         
-        s+="""
+        if (t_k=='l'):
+            s+="""
+    call h5dwrite_f(par_d, %s, data_int, dims, h5_error)
+""" % (H5T[t_k],)
+            if (d_k!='s'):
+                s+="""
+    deallocate(data_int)"""
+        else:
+            s+="""
     call h5dwrite_f(par_d, %s, data, dims, h5_error)
+""" % (H5T[t_k],)
+
+        s+="""
     call h5sclose_f(par_s, h5_error)
 
     if (rank>0) deallocate(dims)
 
        
   end subroutine h5md_write_par_%s%s
-""" % (H5T[t_k], t_k, d_k,)
+""" % (t_k, d_k)
         print s
 
