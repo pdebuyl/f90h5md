@@ -42,6 +42,16 @@ module h5md
      module procedure h5md_create_obs_d2
   end interface
 
+  !> Interface for the overloaded write_obs routines.
+  !! Accepts integer or double precision, scalar, rank-1 or 2 arrays.
+  !! This routine appends to the 1st dimension (0-th rank) of the appropriate dataset
+  !! the actual values of the "data" argument.
+  !! \code
+  !! ! Assuming that ID has been created by h5md_create_obs with the same data, that is 
+  !! ! that x has been passed as an argument to h5md_create_obs for ID.
+  !! ! i_time is the integer timestep and time is the real time.
+  !! call h5md_write_obs(ID, x, i_time, time)
+  !! \endcode
   interface h5md_write_obs
      module procedure h5md_write_obs_is
      module procedure h5md_write_obs_i1
@@ -55,8 +65,8 @@ module h5md
   !! Accepts an integer, double precision or logical parameter that is a scalar or 
   !! a rank 1 or 2 array and also a single string of characters.
   !! \code
-  !! ! for a double precision variable timestep
-  !! ! and an open H5MD file file_id
+  !! ! Assuming timestep is declared as double precision
+  !! ! and that file_id refers to an open H5MD file.
   !! timestep = 0.1d0
   !! call h5md_write_par(file_id, 'timestep', timestep)
   !! \endcode
@@ -448,10 +458,11 @@ contains
   end subroutine h5md_load_trajectory_data_d
 
   !> Adds a "time frame" to a trajectory
-  !! @param traj_id is the trajectory dataset
-  !! @param data is the actual data of dim (D,N)
-  !! @param step is the integer step of simulation. if the linked 'step' dataset's latest value
+  !! @param ID is the trajectory dataset.
+  !! @param data is the actual data of dim (D,N).
+  !! @param present_step is the integer step of simulation. if the linked 'step' dataset's latest value
   !! is present_step, 'step' and 'time' are not updated. Else, they are.
+  !! @param time is the real value of the simulation time.
   !! @todo should be doubled for integer and real values, with explicit interfacing
   subroutine h5md_write_trajectory_data_d1d(ID, data, present_step, time)
     type(h5md_t), intent(inout) :: ID
