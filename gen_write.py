@@ -22,7 +22,8 @@ for t_k,t_v in types.iteritems():
   !! @param ID h5md_t variable.
   !! @param data value of the observable.
   !! @param present_step integer time step.
-  !! @param time real-valued time."""
+  !! @param time real-valued time.
+  !! @private"""
         s+="""
   subroutine h5md_write_obs_%s%s(ID, data, present_step, time)
     type(h5md_t), intent(inout) :: ID
@@ -47,12 +48,12 @@ for t_k,t_v in types.iteritems():
 """
 
         s+="""
-    call h5screate_simple_f(1, dims, mem_s, h5_error)
+    call h5screate_simple_f(%i, dims, mem_s, h5_error)
 
-    call h5dget_space_f(ID% d_id , obs_s, h5_error)
+    call h5dget_space_f(ID%% d_id , obs_s, h5_error)
     call h5sget_simple_extent_dims_f(obs_s, dims, max_dims, h5_error)
     call h5sclose_f(obs_s, h5_error)
-""" 
+""" % (rank-1, )
         if (d_k!='s'):
             s+="""
     start(1:%i) = 0

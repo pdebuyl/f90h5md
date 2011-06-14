@@ -916,6 +916,7 @@ contains
   !! @param data value of the observable.
   !! @param present_step integer time step.
   !! @param time real-valued time.
+  !! @private
   subroutine h5md_write_obs_i1(ID, data, present_step, time)
     type(h5md_t), intent(inout) :: ID
     integer, intent(in) :: data(:)
@@ -960,6 +961,7 @@ contains
   !! @param data value of the observable.
   !! @param present_step integer time step.
   !! @param time real-valued time.
+  !! @private
   subroutine h5md_write_obs_is(ID, data, present_step, time)
     type(h5md_t), intent(inout) :: ID
     integer, intent(in) :: data
@@ -975,7 +977,7 @@ contains
 
     dims(1) = 1
 
-    call h5screate_simple_f(1, dims, mem_s, h5_error)
+    call h5screate_simple_f(0, dims, mem_s, h5_error)
 
     call h5dget_space_f(ID% d_id , obs_s, h5_error)
     call h5sget_simple_extent_dims_f(obs_s, dims, max_dims, h5_error)
@@ -1001,6 +1003,7 @@ contains
   !! @param data value of the observable.
   !! @param present_step integer time step.
   !! @param time real-valued time.
+  !! @private
   subroutine h5md_write_obs_i2(ID, data, present_step, time)
     type(h5md_t), intent(inout) :: ID
     integer, intent(in) :: data(:,:)
@@ -1016,7 +1019,7 @@ contains
 
     dims(1:2) = shape(data)
 
-    call h5screate_simple_f(1, dims, mem_s, h5_error)
+    call h5screate_simple_f(2, dims, mem_s, h5_error)
 
     call h5dget_space_f(ID% d_id , obs_s, h5_error)
     call h5sget_simple_extent_dims_f(obs_s, dims, max_dims, h5_error)
@@ -1045,6 +1048,7 @@ contains
   !! @param data value of the observable.
   !! @param present_step integer time step.
   !! @param time real-valued time.
+  !! @private
   subroutine h5md_write_obs_d1(ID, data, present_step, time)
     type(h5md_t), intent(inout) :: ID
     double precision, intent(in) :: data(:)
@@ -1089,6 +1093,7 @@ contains
   !! @param data value of the observable.
   !! @param present_step integer time step.
   !! @param time real-valued time.
+  !! @private
   subroutine h5md_write_obs_ds(ID, data, present_step, time)
     type(h5md_t), intent(inout) :: ID
     double precision, intent(in) :: data
@@ -1104,7 +1109,7 @@ contains
 
     dims(1) = 1
 
-    call h5screate_simple_f(1, dims, mem_s, h5_error)
+    call h5screate_simple_f(0, dims, mem_s, h5_error)
 
     call h5dget_space_f(ID% d_id , obs_s, h5_error)
     call h5sget_simple_extent_dims_f(obs_s, dims, max_dims, h5_error)
@@ -1130,6 +1135,7 @@ contains
   !! @param data value of the observable.
   !! @param present_step integer time step.
   !! @param time real-valued time.
+  !! @private
   subroutine h5md_write_obs_d2(ID, data, present_step, time)
     type(h5md_t), intent(inout) :: ID
     double precision, intent(in) :: data(:,:)
@@ -1145,7 +1151,7 @@ contains
 
     dims(1:2) = shape(data)
 
-    call h5screate_simple_f(1, dims, mem_s, h5_error)
+    call h5screate_simple_f(2, dims, mem_s, h5_error)
 
     call h5dget_space_f(ID% d_id , obs_s, h5_error)
     call h5sget_simple_extent_dims_f(obs_s, dims, max_dims, h5_error)
@@ -1168,6 +1174,7 @@ contains
     call h5md_append_step_time(ID% s_id, ID% t_id, present_step, time)
        
   end subroutine h5md_write_obs_d2
+
 
   
   !> Writes a parameter to the parameter group.
