@@ -728,6 +728,14 @@ contains
     
     success = .false.
 
+    if (size(list) .eq. 1) then
+       if (list(1) .eq. wish) then
+          success = .true.
+          idx = 1
+       end if
+       return
+    end if
+
     allocate(order_check(size(list)-1))
     order_check = list(2:size(list))-list(1:size(list)-1)
     low = minval(order_check)
