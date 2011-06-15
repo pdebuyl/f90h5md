@@ -61,6 +61,24 @@ module h5md
      module procedure h5md_write_obs_d2
   end interface
 
+  !> Interface for the overloaded read_obs routines.
+  !! Accepts integer or double precision, scalar, rank-1 or 2 arrays.
+  !! This routine appends looks up the requested integer timestep and returns the data
+  !! corresponding to that timestep. It also returns the corresponding real-time.
+  !! \code
+  !! ! Assuming that ID has been opened by h5md_open_ID.
+  !! ! i_time is the integer timestep and time is the real time.
+  !! call h5md_read_obs(ID, x, i_time, time)
+  !! \endcode
+  interface h5md_read_obs
+     module procedure h5md_read_obs_is
+     module procedure h5md_read_obs_i1
+     module procedure h5md_read_obs_i2
+     module procedure h5md_read_obs_ds
+     module procedure h5md_read_obs_d1
+     module procedure h5md_read_obs_d2
+  end interface
+
   !> Interface for the overloaded parameter routines.
   !! Accepts an integer, double precision or logical parameter that is a scalar or 
   !! a rank 1 or 2 array and also a single string of characters.
@@ -81,6 +99,29 @@ module h5md
      module procedure h5md_write_par_ls
      module procedure h5md_write_par_l1
      module procedure h5md_write_par_l2
+  end interface
+
+  !> Interface for the overloaded parameter routines.
+  !! Accepts an integer, double precision or logical parameter that is a scalar or 
+  !! a rank 1 or 2 array. Does not accept strings of characters.
+  !! \code
+  !! ! Assuming timestep is declared as double precision
+  !! ! and that file_id refers to an open H5MD file.
+  !! call h5md_read_par(file_id, 'timestep', timestep)
+  !! write(*,*) 'timestep = ', timestep
+  !! \endcode
+  !! The data to be read is expected to be of the exact same shape than the data in
+  !! the file.
+  interface h5md_read_par
+     module procedure h5md_read_par_is
+     module procedure h5md_read_par_i1
+     module procedure h5md_read_par_i2
+     module procedure h5md_read_par_ds
+     module procedure h5md_read_par_d1
+     module procedure h5md_read_par_d2
+     module procedure h5md_read_par_ls
+     module procedure h5md_read_par_l1
+     module procedure h5md_read_par_l2
   end interface
   
 contains
@@ -597,6 +638,128 @@ contains
     call h5dclose_f(ID% t_id, h5_error)
 
   end subroutine h5md_close_ID
+
+  !> Opens a h5md_t variable.
+  !! @param file_ID The ID of the HDF5 file. 
+  !! @param ID h5md_t variable.
+  !! @param h5md_group The name of the group, it can be either 'trajectory' or 'observables'.
+  !! @param full_name The name of the data, including its group, e.g. 'solvent/position'.
+  subroutine h5md_open_ID(file_ID, ID, h5md_group, full_name)
+    integer(HID_T), intent(in) :: file_ID
+    type(h5md_t), intent(inout) :: ID
+    character(len=*), intent(in) :: h5md_group, full_name
+
+    character(len=11) :: d_name
+    
+    if (h5md_group .eq. 'trajectory') then
+       d_name = 'coordinates'
+    else if (h5md_group .eq. 'observables') then
+       d_name = 'samples'
+    else
+       write(*,*) h5md_group, ' is not accepted in h5md_open_ID'
+       stop
+    end if
+    call h5dopen_f(file_ID, h5md_group//'/'//full_name//'/'//trim(d_name),ID% d_id, h5_error)
+    call h5dopen_f(file_ID, h5md_group//'/'//full_name//'/step',ID% s_id, h5_error)
+    call h5dopen_f(file_ID, h5md_group//'/'//full_name//'/time',ID% t_id, h5_error)
+       
+  end subroutine h5md_open_ID
+
+  !> Provides the idx that corresponds to the integer timestep step.
+  !! Also provides the corresponding real-valued time.
+  !! @param ID The h5md_t variable for the data.
+  !! @param step The integer timestep requested.
+  !! @param idx Is set to the idx of the array to fetch.
+  !! @param time Is set to the corresponding real time.
+  subroutine h5md_get_step_time(ID, step, idx, time)
+    implicit none
+    type(h5md_t), intent(inout) :: ID
+    integer, intent(in) :: step
+    integer, intent(out) :: idx
+    double precision, intent(out) :: time
+    
+    integer(HSIZE_T) :: dims(1), max_dims(1)
+    integer(HID_T) :: space
+    integer, allocatable :: step_data(:)
+    double precision, allocatable :: time_data(:)
+    integer :: rank
+    logical :: ok
+
+    call h5dget_space_f(ID% s_id, space, h5_error)
+    call h5sget_simple_extent_ndims_f(space, rank, h5_error)
+    if (rank .ne. 1) stop 'wrong rank for step in h5md_get_step_time'
+    call h5sget_simple_extent_dims_f(space, dims, max_dims, h5_error)
+    call h5sclose_f(space, h5_error)
+    allocate(step_data(dims(1)))
+    call h5dread_f(ID% s_id, H5T_NATIVE_INTEGER, step_data, dims, h5_error)
+
+    call h5md_lookup(step_data, step, idx, ok)
+    if (.not. ok) stop 'could not find step in h5md_get_step_time'
+    deallocate(step_data)
+
+    call h5dget_space_f(ID% t_id, space, h5_error)
+    call h5sget_simple_extent_ndims_f(space, rank, h5_error)
+    if (rank .ne. 1) stop 'wrong rank for step in h5md_get_step_time'
+    call h5sget_simple_extent_dims_f(space, dims, max_dims, h5_error)
+    call h5sclose_f(space, h5_error)
+    allocate(time_data(dims(1)))
+    call h5dread_f(ID% t_id, H5T_NATIVE_DOUBLE, time_data, dims, h5_error)
+    time = time_data(idx)
+    deallocate(time_data)
+
+  end subroutine h5md_get_step_time
+
+  !> Looks up an integer in an ordered non-repeating list.
+  !! @param list An ordered non-repeating list of integers.
+  !! @param wish The integer whose index is looked for.
+  !! @param idx The resulting index.
+  !! @param success Results in .true. if the operation was successful.
+  subroutine h5md_lookup(list, wish, idx, success)
+    implicit none
+    integer, intent(in) :: list(:), wish
+    integer, intent(out) :: idx
+    logical, intent(out) :: success
+
+    integer :: low, up, i
+    integer, allocatable :: order_check(:)    
+    
+    success = .false.
+
+    allocate(order_check(size(list)-1))
+    order_check = list(2:size(list))-list(1:size(list)-1)
+    low = minval(order_check)
+    deallocate(order_check)
+    if (low <= 0) then 
+       write(*,*) 'nonordered or repeating list in lookup'
+       return
+    end if
+
+    if ( wish < list(1) .or. wish > list(size(list)) ) then
+       write(*,*) wish, ' out of range in lookup'
+       stop
+    end if
+
+    low = 1
+    up = size(list)
+    lookup_loop: do
+       
+       i = (low+up)/2
+       if (list(i) >= wish) then
+          up =i
+       else
+          low=i
+       end if
+       if ( up-low .eq. 1 ) then
+          if (list(up).eq.wish) i=up
+          if (list(low).eq.wish) i=low
+          exit lookup_loop
+       end if
+    end do lookup_loop
+  
+    if (list(i).eq.wish) success=.true.
+    idx = i
+    
+  end subroutine h5md_lookup
 
   !> Sets up a h5md_t variable.
   !! @param file_id ID of the file.
@@ -1175,12 +1338,253 @@ contains
        
   end subroutine h5md_write_obs_d2
 
+  !> Reads a time frame for the given observable.
+  !! @param ID h5md_t variable.
+  !! @param data value of the observable.
+  !! @param step integer time step.
+  !! @param time The time corresponding to the step.
+  !! @private
+  subroutine h5md_read_obs_i1(ID, data, step, time)
+    implicit none
+    type(h5md_t), intent(inout) :: ID
+    integer, intent(out) :: data(:)
+    integer, intent(in) :: step
+    double precision, intent(out) :: time
 
-  
+    integer(HID_T) :: obs_s, mem_s
+    integer(HSIZE_T), allocatable :: dims(:), max_dims(:), start(:), num(:)
+    integer :: rank, idx
+
+    rank = 2
+    call h5md_get_step_time(ID, step, idx, time)
+    allocate(dims(rank)) ; allocate(max_dims(rank)) ; allocate(start(rank)) ; allocate(num(rank))
+
+    dims(1:1) = shape(data)
+
+    call h5screate_simple_f(1, dims, mem_s, h5_error)
+
+    call h5dget_space_f(ID% d_id , obs_s, h5_error)
+    call h5sget_simple_extent_dims_f(obs_s, dims, max_dims, h5_error)
+
+    start(1:1) = 0
+    num(1:1) = dims(1:1)
+    start(2) = idx
+    num(2) = 1
+    call h5sselect_hyperslab_f(obs_s, H5S_SELECT_SET_F, start, num, h5_error)
+    call h5dread_f(ID% d_id, H5T_NATIVE_INTEGER, data, num, h5_error, mem_space_id=mem_s, file_space_id=obs_s)
+    call h5sclose_f(obs_s, h5_error)
+    call h5sclose_f(mem_s, h5_error)
+
+    deallocate(dims) ; deallocate(max_dims) ; deallocate(start) ; deallocate(num)
+       
+  end subroutine h5md_read_obs_i1
+
+  !> Reads a time frame for the given observable.
+  !! @param ID h5md_t variable.
+  !! @param data value of the observable.
+  !! @param step integer time step.
+  !! @param time The time corresponding to the step.
+  !! @private
+  subroutine h5md_read_obs_is(ID, data, step, time)
+    implicit none
+    type(h5md_t), intent(inout) :: ID
+    integer, intent(out) :: data
+    integer, intent(in) :: step
+    double precision, intent(out) :: time
+
+    integer(HID_T) :: obs_s, mem_s
+    integer(HSIZE_T), allocatable :: dims(:), max_dims(:), start(:), num(:)
+    integer :: rank, idx
+
+    rank = 1
+    call h5md_get_step_time(ID, step, idx, time)
+    allocate(dims(rank)) ; allocate(max_dims(rank)) ; allocate(start(rank)) ; allocate(num(rank))
+
+    dims(1) = 1
+
+    call h5screate_simple_f(0, dims, mem_s, h5_error)
+
+    call h5dget_space_f(ID% d_id , obs_s, h5_error)
+    call h5sget_simple_extent_dims_f(obs_s, dims, max_dims, h5_error)
+    start(1) = idx
+    num(1) = 1
+    call h5sselect_hyperslab_f(obs_s, H5S_SELECT_SET_F, start, num, h5_error)
+    call h5dread_f(ID% d_id, H5T_NATIVE_INTEGER, data, num, h5_error, mem_space_id=mem_s, file_space_id=obs_s)
+    call h5sclose_f(obs_s, h5_error)
+    call h5sclose_f(mem_s, h5_error)
+
+    deallocate(dims) ; deallocate(max_dims) ; deallocate(start) ; deallocate(num)
+       
+  end subroutine h5md_read_obs_is
+
+  !> Reads a time frame for the given observable.
+  !! @param ID h5md_t variable.
+  !! @param data value of the observable.
+  !! @param step integer time step.
+  !! @param time The time corresponding to the step.
+  !! @private
+  subroutine h5md_read_obs_i2(ID, data, step, time)
+    implicit none
+    type(h5md_t), intent(inout) :: ID
+    integer, intent(out) :: data(:,:)
+    integer, intent(in) :: step
+    double precision, intent(out) :: time
+
+    integer(HID_T) :: obs_s, mem_s
+    integer(HSIZE_T), allocatable :: dims(:), max_dims(:), start(:), num(:)
+    integer :: rank, idx
+
+    rank = 3
+    call h5md_get_step_time(ID, step, idx, time)
+    allocate(dims(rank)) ; allocate(max_dims(rank)) ; allocate(start(rank)) ; allocate(num(rank))
+
+    dims(1:2) = shape(data)
+
+    call h5screate_simple_f(2, dims, mem_s, h5_error)
+
+    call h5dget_space_f(ID% d_id , obs_s, h5_error)
+    call h5sget_simple_extent_dims_f(obs_s, dims, max_dims, h5_error)
+
+    start(1:2) = 0
+    num(1:2) = dims(1:2)
+    start(3) = idx
+    num(3) = 1
+    call h5sselect_hyperslab_f(obs_s, H5S_SELECT_SET_F, start, num, h5_error)
+    call h5dread_f(ID% d_id, H5T_NATIVE_INTEGER, data, num, h5_error, mem_space_id=mem_s, file_space_id=obs_s)
+    call h5sclose_f(obs_s, h5_error)
+    call h5sclose_f(mem_s, h5_error)
+
+    deallocate(dims) ; deallocate(max_dims) ; deallocate(start) ; deallocate(num)
+       
+  end subroutine h5md_read_obs_i2
+
+  !> Reads a time frame for the given observable.
+  !! @param ID h5md_t variable.
+  !! @param data value of the observable.
+  !! @param step integer time step.
+  !! @param time The time corresponding to the step.
+  !! @private
+  subroutine h5md_read_obs_d1(ID, data, step, time)
+    implicit none
+    type(h5md_t), intent(inout) :: ID
+    double precision, intent(out) :: data(:)
+    integer, intent(in) :: step
+    double precision, intent(out) :: time
+
+    integer(HID_T) :: obs_s, mem_s
+    integer(HSIZE_T), allocatable :: dims(:), max_dims(:), start(:), num(:)
+    integer :: rank, idx
+
+    rank = 2
+    call h5md_get_step_time(ID, step, idx, time)
+    allocate(dims(rank)) ; allocate(max_dims(rank)) ; allocate(start(rank)) ; allocate(num(rank))
+
+    dims(1:1) = shape(data)
+
+    call h5screate_simple_f(1, dims, mem_s, h5_error)
+
+    call h5dget_space_f(ID% d_id , obs_s, h5_error)
+    call h5sget_simple_extent_dims_f(obs_s, dims, max_dims, h5_error)
+
+    start(1:1) = 0
+    num(1:1) = dims(1:1)
+    start(2) = idx
+    num(2) = 1
+    call h5sselect_hyperslab_f(obs_s, H5S_SELECT_SET_F, start, num, h5_error)
+    call h5dread_f(ID% d_id, H5T_NATIVE_DOUBLE, data, num, h5_error, mem_space_id=mem_s, file_space_id=obs_s)
+    call h5sclose_f(obs_s, h5_error)
+    call h5sclose_f(mem_s, h5_error)
+
+    deallocate(dims) ; deallocate(max_dims) ; deallocate(start) ; deallocate(num)
+       
+  end subroutine h5md_read_obs_d1
+
+  !> Reads a time frame for the given observable.
+  !! @param ID h5md_t variable.
+  !! @param data value of the observable.
+  !! @param step integer time step.
+  !! @param time The time corresponding to the step.
+  !! @private
+  subroutine h5md_read_obs_ds(ID, data, step, time)
+    implicit none
+    type(h5md_t), intent(inout) :: ID
+    double precision, intent(out) :: data
+    integer, intent(in) :: step
+    double precision, intent(out) :: time
+
+    integer(HID_T) :: obs_s, mem_s
+    integer(HSIZE_T), allocatable :: dims(:), max_dims(:), start(:), num(:)
+    integer :: rank, idx
+
+    rank = 1
+    call h5md_get_step_time(ID, step, idx, time)
+    allocate(dims(rank)) ; allocate(max_dims(rank)) ; allocate(start(rank)) ; allocate(num(rank))
+
+    dims(1) = 1
+
+    call h5screate_simple_f(0, dims, mem_s, h5_error)
+
+    call h5dget_space_f(ID% d_id , obs_s, h5_error)
+    call h5sget_simple_extent_dims_f(obs_s, dims, max_dims, h5_error)
+    start(1) = idx
+    num(1) = 1
+    call h5sselect_hyperslab_f(obs_s, H5S_SELECT_SET_F, start, num, h5_error)
+    call h5dread_f(ID% d_id, H5T_NATIVE_DOUBLE, data, num, h5_error, mem_space_id=mem_s, file_space_id=obs_s)
+    call h5sclose_f(obs_s, h5_error)
+    call h5sclose_f(mem_s, h5_error)
+
+    deallocate(dims) ; deallocate(max_dims) ; deallocate(start) ; deallocate(num)
+       
+  end subroutine h5md_read_obs_ds
+
+  !> Reads a time frame for the given observable.
+  !! @param ID h5md_t variable.
+  !! @param data value of the observable.
+  !! @param step integer time step.
+  !! @param time The time corresponding to the step.
+  !! @private
+  subroutine h5md_read_obs_d2(ID, data, step, time)
+    implicit none
+    type(h5md_t), intent(inout) :: ID
+    double precision, intent(out) :: data(:,:)
+    integer, intent(in) :: step
+    double precision, intent(out) :: time
+
+    integer(HID_T) :: obs_s, mem_s
+    integer(HSIZE_T), allocatable :: dims(:), max_dims(:), start(:), num(:)
+    integer :: rank, idx
+
+    rank = 3
+    call h5md_get_step_time(ID, step, idx, time)
+    allocate(dims(rank)) ; allocate(max_dims(rank)) ; allocate(start(rank)) ; allocate(num(rank))
+
+    dims(1:2) = shape(data)
+
+    call h5screate_simple_f(2, dims, mem_s, h5_error)
+
+    call h5dget_space_f(ID% d_id , obs_s, h5_error)
+    call h5sget_simple_extent_dims_f(obs_s, dims, max_dims, h5_error)
+
+    start(1:2) = 0
+    num(1:2) = dims(1:2)
+    start(3) = idx
+    num(3) = 1
+    call h5sselect_hyperslab_f(obs_s, H5S_SELECT_SET_F, start, num, h5_error)
+    call h5dread_f(ID% d_id, H5T_NATIVE_DOUBLE, data, num, h5_error, mem_space_id=mem_s, file_space_id=obs_s)
+    call h5sclose_f(obs_s, h5_error)
+    call h5sclose_f(mem_s, h5_error)
+
+    deallocate(dims) ; deallocate(max_dims) ; deallocate(start) ; deallocate(num)
+       
+  end subroutine h5md_read_obs_d2
+
+
+
   !> Writes a parameter to the parameter group.
   !! @param file_id hdf5 file ID.
   !! @param name name of the parameter.
   !! @param data value of the parameter.
+  !! @private
   subroutine h5md_write_par_i1(file_id, name, data)
     integer(HID_T), intent(in) :: file_id
     character(len=*), intent(in) :: name
@@ -1212,6 +1616,7 @@ contains
   !! @param file_id hdf5 file ID.
   !! @param name name of the parameter.
   !! @param data value of the parameter.
+  !! @private
   subroutine h5md_write_par_is(file_id, name, data)
     integer(HID_T), intent(in) :: file_id
     character(len=*), intent(in) :: name
@@ -1242,6 +1647,7 @@ contains
   !! @param file_id hdf5 file ID.
   !! @param name name of the parameter.
   !! @param data value of the parameter.
+  !! @private
   subroutine h5md_write_par_i2(file_id, name, data)
     integer(HID_T), intent(in) :: file_id
     character(len=*), intent(in) :: name
@@ -1273,6 +1679,7 @@ contains
   !! @param file_id hdf5 file ID.
   !! @param name name of the parameter.
   !! @param data value of the parameter.
+  !! @private
   subroutine h5md_write_par_cs(file_id, name, data)
     integer(HID_T), intent(in) :: file_id
     character(len=*), intent(in) :: name
@@ -1307,6 +1714,7 @@ contains
   !! @param file_id hdf5 file ID.
   !! @param name name of the parameter.
   !! @param data value of the parameter.
+  !! @private
   subroutine h5md_write_par_d1(file_id, name, data)
     integer(HID_T), intent(in) :: file_id
     character(len=*), intent(in) :: name
@@ -1338,6 +1746,7 @@ contains
   !! @param file_id hdf5 file ID.
   !! @param name name of the parameter.
   !! @param data value of the parameter.
+  !! @private
   subroutine h5md_write_par_ds(file_id, name, data)
     integer(HID_T), intent(in) :: file_id
     character(len=*), intent(in) :: name
@@ -1368,6 +1777,7 @@ contains
   !! @param file_id hdf5 file ID.
   !! @param name name of the parameter.
   !! @param data value of the parameter.
+  !! @private
   subroutine h5md_write_par_d2(file_id, name, data)
     integer(HID_T), intent(in) :: file_id
     character(len=*), intent(in) :: name
@@ -1399,6 +1809,7 @@ contains
   !! @param file_id hdf5 file ID.
   !! @param name name of the parameter.
   !! @param data value of the parameter.
+  !! @private
   subroutine h5md_write_par_l1(file_id, name, data)
     integer(HID_T), intent(in) :: file_id
     character(len=*), intent(in) :: name
@@ -1439,6 +1850,7 @@ contains
   !! @param file_id hdf5 file ID.
   !! @param name name of the parameter.
   !! @param data value of the parameter.
+  !! @private
   subroutine h5md_write_par_ls(file_id, name, data)
     integer(HID_T), intent(in) :: file_id
     character(len=*), intent(in) :: name
@@ -1476,6 +1888,7 @@ contains
   !! @param file_id hdf5 file ID.
   !! @param name name of the parameter.
   !! @param data value of the parameter.
+  !! @private
   subroutine h5md_write_par_l2(file_id, name, data)
     integer(HID_T), intent(in) :: file_id
     character(len=*), intent(in) :: name
@@ -1511,6 +1924,337 @@ contains
 
        
   end subroutine h5md_write_par_l2
+
+  
+
+  !> Reads a parameter from the parameter group.
+  !! @param file_id hdf5 file ID.
+  !! @param name name of the parameter.
+  !! @param data value of the parameter.
+  !! @private
+  subroutine h5md_read_par_i1(file_id, name, data)
+    integer(HID_T), intent(in) :: file_id
+    character(len=*), intent(in) :: name
+    integer, intent(out) :: data(:)
+
+    integer(HID_T) :: par_d, par_s
+    integer(HSIZE_T), allocatable :: dims(:)
+    integer(HSIZE_T) :: a_size(1)
+    integer :: rank
+
+    rank = 1
+    if (rank>0) allocate(dims(rank))
+
+    dims = shape(data)
+    call h5screate_simple_f(1, dims, par_s, h5_error)
+
+    call h5dopen_f(file_id, 'parameters/'//name, par_d, h5_error)
+
+    call h5dread_f(par_d, H5T_NATIVE_INTEGER, data, dims, h5_error)
+
+    call h5sclose_f(par_s, h5_error)
+
+    if (rank>0) deallocate(dims)
+
+       
+  end subroutine h5md_read_par_i1
+
+  !> Reads a parameter from the parameter group.
+  !! @param file_id hdf5 file ID.
+  !! @param name name of the parameter.
+  !! @param data value of the parameter.
+  !! @private
+  subroutine h5md_read_par_is(file_id, name, data)
+    integer(HID_T), intent(in) :: file_id
+    character(len=*), intent(in) :: name
+    integer, intent(out) :: data
+
+    integer(HID_T) :: par_d, par_s
+    integer(HSIZE_T), allocatable :: dims(:)
+    integer(HSIZE_T) :: a_size(1)
+    integer :: rank
+
+    rank = 0
+    if (rank>0) allocate(dims(rank))
+
+    call h5screate_f(H5S_SCALAR_F, par_s, h5_error)
+
+    call h5dopen_f(file_id, 'parameters/'//name, par_d, h5_error)
+
+    call h5dread_f(par_d, H5T_NATIVE_INTEGER, data, dims, h5_error)
+
+    call h5sclose_f(par_s, h5_error)
+
+    if (rank>0) deallocate(dims)
+
+       
+  end subroutine h5md_read_par_is
+
+  !> Reads a parameter from the parameter group.
+  !! @param file_id hdf5 file ID.
+  !! @param name name of the parameter.
+  !! @param data value of the parameter.
+  !! @private
+  subroutine h5md_read_par_i2(file_id, name, data)
+    integer(HID_T), intent(in) :: file_id
+    character(len=*), intent(in) :: name
+    integer, intent(out) :: data(:,:)
+
+    integer(HID_T) :: par_d, par_s
+    integer(HSIZE_T), allocatable :: dims(:)
+    integer(HSIZE_T) :: a_size(1)
+    integer :: rank
+
+    rank = 2
+    if (rank>0) allocate(dims(rank))
+
+    dims = shape(data)
+    call h5screate_simple_f(2, dims, par_s, h5_error)
+
+    call h5dopen_f(file_id, 'parameters/'//name, par_d, h5_error)
+
+    call h5dread_f(par_d, H5T_NATIVE_INTEGER, data, dims, h5_error)
+
+    call h5sclose_f(par_s, h5_error)
+
+    if (rank>0) deallocate(dims)
+
+       
+  end subroutine h5md_read_par_i2
+
+  !> Reads a parameter from the parameter group.
+  !! @param file_id hdf5 file ID.
+  !! @param name name of the parameter.
+  !! @param data value of the parameter.
+  !! @private
+  subroutine h5md_read_par_d1(file_id, name, data)
+    integer(HID_T), intent(in) :: file_id
+    character(len=*), intent(in) :: name
+    double precision, intent(out) :: data(:)
+
+    integer(HID_T) :: par_d, par_s
+    integer(HSIZE_T), allocatable :: dims(:)
+    integer(HSIZE_T) :: a_size(1)
+    integer :: rank
+
+    rank = 1
+    if (rank>0) allocate(dims(rank))
+
+    dims = shape(data)
+    call h5screate_simple_f(1, dims, par_s, h5_error)
+
+    call h5dopen_f(file_id, 'parameters/'//name, par_d, h5_error)
+
+    call h5dread_f(par_d, H5T_NATIVE_DOUBLE, data, dims, h5_error)
+
+    call h5sclose_f(par_s, h5_error)
+
+    if (rank>0) deallocate(dims)
+
+       
+  end subroutine h5md_read_par_d1
+
+  !> Reads a parameter from the parameter group.
+  !! @param file_id hdf5 file ID.
+  !! @param name name of the parameter.
+  !! @param data value of the parameter.
+  !! @private
+  subroutine h5md_read_par_ds(file_id, name, data)
+    integer(HID_T), intent(in) :: file_id
+    character(len=*), intent(in) :: name
+    double precision, intent(out) :: data
+
+    integer(HID_T) :: par_d, par_s
+    integer(HSIZE_T), allocatable :: dims(:)
+    integer(HSIZE_T) :: a_size(1)
+    integer :: rank
+
+    rank = 0
+    if (rank>0) allocate(dims(rank))
+
+    call h5screate_f(H5S_SCALAR_F, par_s, h5_error)
+
+    call h5dopen_f(file_id, 'parameters/'//name, par_d, h5_error)
+
+    call h5dread_f(par_d, H5T_NATIVE_DOUBLE, data, dims, h5_error)
+
+    call h5sclose_f(par_s, h5_error)
+
+    if (rank>0) deallocate(dims)
+
+       
+  end subroutine h5md_read_par_ds
+
+  !> Reads a parameter from the parameter group.
+  !! @param file_id hdf5 file ID.
+  !! @param name name of the parameter.
+  !! @param data value of the parameter.
+  !! @private
+  subroutine h5md_read_par_d2(file_id, name, data)
+    integer(HID_T), intent(in) :: file_id
+    character(len=*), intent(in) :: name
+    double precision, intent(out) :: data(:,:)
+
+    integer(HID_T) :: par_d, par_s
+    integer(HSIZE_T), allocatable :: dims(:)
+    integer(HSIZE_T) :: a_size(1)
+    integer :: rank
+
+    rank = 2
+    if (rank>0) allocate(dims(rank))
+
+    dims = shape(data)
+    call h5screate_simple_f(2, dims, par_s, h5_error)
+
+    call h5dopen_f(file_id, 'parameters/'//name, par_d, h5_error)
+
+    call h5dread_f(par_d, H5T_NATIVE_DOUBLE, data, dims, h5_error)
+
+    call h5sclose_f(par_s, h5_error)
+
+    if (rank>0) deallocate(dims)
+
+       
+  end subroutine h5md_read_par_d2
+
+  !> Reads a parameter from the parameter group.
+  !! @param file_id hdf5 file ID.
+  !! @param name name of the parameter.
+  !! @param data value of the parameter.
+  !! @private
+  subroutine h5md_read_par_l1(file_id, name, data)
+    integer(HID_T), intent(in) :: file_id
+    character(len=*), intent(in) :: name
+    logical, intent(out) :: data(:)
+
+    integer(HID_T) :: par_d, par_s
+    integer(HSIZE_T), allocatable :: dims(:)
+    integer(HSIZE_T) :: a_size(1)
+    integer :: rank
+    integer, allocatable :: data_int(:)
+    allocate(data_int(size(data)))
+    where (data)
+        data_int = 1
+    elsewhere
+        data_int=0
+    endwhere
+
+
+    rank = 1
+    if (rank>0) allocate(dims(rank))
+
+    dims = shape(data)
+    call h5screate_simple_f(1, dims, par_s, h5_error)
+
+    call h5dopen_f(file_id, 'parameters/'//name, par_d, h5_error)
+
+    call h5dread_f(par_d, H5T_NATIVE_INTEGER, data_int, dims, h5_error)
+
+    where (data_int .eq. 0)
+        data = .false.
+    elsewhere
+        data = .true.
+    endwhere
+    deallocate(data_int)
+
+    call h5sclose_f(par_s, h5_error)
+
+    if (rank>0) deallocate(dims)
+
+       
+  end subroutine h5md_read_par_l1
+
+  !> Reads a parameter from the parameter group.
+  !! @param file_id hdf5 file ID.
+  !! @param name name of the parameter.
+  !! @param data value of the parameter.
+  !! @private
+  subroutine h5md_read_par_ls(file_id, name, data)
+    integer(HID_T), intent(in) :: file_id
+    character(len=*), intent(in) :: name
+    logical, intent(out) :: data
+
+    integer(HID_T) :: par_d, par_s
+    integer(HSIZE_T), allocatable :: dims(:)
+    integer(HSIZE_T) :: a_size(1)
+    integer :: rank
+    integer :: data_int
+    if (data) then
+        data_int = 1
+    else
+        data_int = 0
+    end if
+
+
+    rank = 0
+    if (rank>0) allocate(dims(rank))
+
+    call h5screate_f(H5S_SCALAR_F, par_s, h5_error)
+
+    call h5dopen_f(file_id, 'parameters/'//name, par_d, h5_error)
+
+    call h5dread_f(par_d, H5T_NATIVE_INTEGER, data_int, dims, h5_error)
+
+    if (data_int.eq.0) then
+        data = .false.
+    else
+        data = .true.
+    end if
+
+    call h5sclose_f(par_s, h5_error)
+
+    if (rank>0) deallocate(dims)
+
+       
+  end subroutine h5md_read_par_ls
+
+  !> Reads a parameter from the parameter group.
+  !! @param file_id hdf5 file ID.
+  !! @param name name of the parameter.
+  !! @param data value of the parameter.
+  !! @private
+  subroutine h5md_read_par_l2(file_id, name, data)
+    integer(HID_T), intent(in) :: file_id
+    character(len=*), intent(in) :: name
+    logical, intent(out) :: data(:,:)
+
+    integer(HID_T) :: par_d, par_s
+    integer(HSIZE_T), allocatable :: dims(:)
+    integer(HSIZE_T) :: a_size(1)
+    integer :: rank
+    integer, allocatable :: data_int(:,:)
+    allocate(data_int(size(data,dim=1),size(data,dim=2)))
+    where (data)
+        data_int = 1
+    elsewhere
+        data_int=0
+    endwhere
+
+
+    rank = 2
+    if (rank>0) allocate(dims(rank))
+
+    dims = shape(data)
+    call h5screate_simple_f(2, dims, par_s, h5_error)
+
+    call h5dopen_f(file_id, 'parameters/'//name, par_d, h5_error)
+
+    call h5dread_f(par_d, H5T_NATIVE_INTEGER, data_int, dims, h5_error)
+
+    where (data_int .eq. 0)
+        data = .false.
+    elsewhere
+        data = .true.
+    endwhere
+    deallocate(data_int)
+
+    call h5sclose_f(par_s, h5_error)
+
+    if (rank>0) deallocate(dims)
+
+       
+  end subroutine h5md_read_par_l2
+
 
 
 end module h5md

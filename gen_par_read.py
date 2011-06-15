@@ -4,11 +4,11 @@ types = dict()
 types['i'] = 'integer'
 types['d'] = 'double precision'
 types['l'] = 'logical'
-types['c'] = 'character'
+#types['c'] = 'character'
 H5T = dict()
 H5T['i'] = 'H5T_NATIVE_INTEGER'
 H5T['d'] = 'H5T_NATIVE_DOUBLE'
-H5T['c'] = 'a_type'
+#H5T['c'] = 'a_type'
 H5T['l'] = 'H5T_NATIVE_INTEGER'
 dims = dict()
 dims['s'] = ''
@@ -28,16 +28,16 @@ for t_k,t_v in types.iteritems():
         else:
             rank = int(d_k)
         s=''
-        s+="""  !> Writes a parameter to the parameter group.
+        s+="""  !> Reads a parameter from the parameter group.
   !! @param file_id hdf5 file ID.
   !! @param name name of the parameter.
   !! @param data value of the parameter.
   !! @private"""
         s+="""
-  subroutine h5md_write_par_%s%s(file_id, name, data)
+  subroutine h5md_read_par_%s%s(file_id, name, data)
     integer(HID_T), intent(in) :: file_id
     character(len=*), intent(in) :: name
-    %s, intent(in) :: data%s
+    %s, intent(out) :: data%s
 
     integer(HID_T) :: par_d, par_s
     integer(HSIZE_T), allocatable :: dims(:)
@@ -100,20 +100,36 @@ for t_k,t_v in types.iteritems():
 
 
         s+="""
-    call h5dcreate_f(file_id, 'parameters/'//name, %s, par_s, par_d, h5_error)
-""" % (H5T[t_k], )
+    call h5dopen_f(file_id, 'parameters/'//name, par_d, h5_error)
+""" 
         
         if (t_k=='l'):
             s+="""
-    call h5dwrite_f(par_d, %s, data_int, dims, h5_error)
+    call h5dread_f(par_d, %s, data_int, dims, h5_error)
 """ % (H5T[t_k],)
-            if (d_k!='s'):
-                s+="""
-    deallocate(data_int)"""
         else:
             s+="""
-    call h5dwrite_f(par_d, %s, data, dims, h5_error)
+    call h5dread_f(par_d, %s, data, dims, h5_error)
 """ % (H5T[t_k],)
+
+        if (t_k=='l'):
+            if (d_k=='s'):
+                s+="""
+    if (data_int.eq.0) then
+        data = .false.
+    else
+        data = .true.
+    end if
+"""
+            else: #(d_k=='1' or d_k=='2'):
+                s+="""
+    where (data_int .eq. 0)
+        data = .false.
+    elsewhere
+        data = .true.
+    endwhere
+    deallocate(data_int)
+""" 
 
         s+="""
     call h5sclose_f(par_s, h5_error)
@@ -121,7 +137,7 @@ for t_k,t_v in types.iteritems():
     if (rank>0) deallocate(dims)
 
        
-  end subroutine h5md_write_par_%s%s
+  end subroutine h5md_read_par_%s%s
 """ % (t_k, d_k)
         print s
 
