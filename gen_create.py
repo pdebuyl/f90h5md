@@ -23,7 +23,8 @@ for t_k,t_v in types.iteritems():
   !! @param name Name of the observable
   !! @param ID Resulting h5md_t variable
   !! @param data The data that will fit into the observable.
-  !! @param link_from Indicates if the step and time for this observable should be linked from another one.""" 
+  !! @param link_from Indicates if the step and time for this observable should be linked from another one.
+  !! @private""" 
         s+="""
   subroutine h5md_create_obs_%s%s(file_id, name, ID, data, link_from)
     integer(HID_T), intent(inout) :: file_id

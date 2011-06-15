@@ -33,6 +33,9 @@ module h5md
      integer(HID_T) :: t_id
   end type h5md_t
 
+  !> Interface for overloaded create_obs routines.
+  !! This routine creates a dataset in a H5MD file that corresponds to the type and shape of
+  !! the data argument, with a variable first dimension that corresponds to the time.
   interface h5md_create_obs
      module procedure h5md_create_obs_is
      module procedure h5md_create_obs_i1
@@ -767,6 +770,7 @@ contains
   !! @param ID Resulting h5md_t variable
   !! @param data The data that will fit into the observable.
   !! @param link_from Indicates if the step and time for this observable should be linked from another one.
+  !! @private
   subroutine h5md_create_obs_i1(file_id, name, ID, data, link_from)
     integer(HID_T), intent(inout) :: file_id
     character(len=*), intent(in) :: name
@@ -821,6 +825,7 @@ contains
   !! @param ID Resulting h5md_t variable
   !! @param data The data that will fit into the observable.
   !! @param link_from Indicates if the step and time for this observable should be linked from another one.
+  !! @private
   subroutine h5md_create_obs_is(file_id, name, ID, data, link_from)
     integer(HID_T), intent(inout) :: file_id
     character(len=*), intent(in) :: name
@@ -870,6 +875,7 @@ contains
   !! @param ID Resulting h5md_t variable
   !! @param data The data that will fit into the observable.
   !! @param link_from Indicates if the step and time for this observable should be linked from another one.
+  !! @private
   subroutine h5md_create_obs_i2(file_id, name, ID, data, link_from)
     integer(HID_T), intent(inout) :: file_id
     character(len=*), intent(in) :: name
@@ -924,6 +930,7 @@ contains
   !! @param ID Resulting h5md_t variable
   !! @param data The data that will fit into the observable.
   !! @param link_from Indicates if the step and time for this observable should be linked from another one.
+  !! @private
   subroutine h5md_create_obs_d1(file_id, name, ID, data, link_from)
     integer(HID_T), intent(inout) :: file_id
     character(len=*), intent(in) :: name
@@ -978,6 +985,7 @@ contains
   !! @param ID Resulting h5md_t variable
   !! @param data The data that will fit into the observable.
   !! @param link_from Indicates if the step and time for this observable should be linked from another one.
+  !! @private
   subroutine h5md_create_obs_ds(file_id, name, ID, data, link_from)
     integer(HID_T), intent(inout) :: file_id
     character(len=*), intent(in) :: name
@@ -1027,6 +1035,7 @@ contains
   !! @param ID Resulting h5md_t variable
   !! @param data The data that will fit into the observable.
   !! @param link_from Indicates if the step and time for this observable should be linked from another one.
+  !! @private
   subroutine h5md_create_obs_d2(file_id, name, ID, data, link_from)
     integer(HID_T), intent(inout) :: file_id
     character(len=*), intent(in) :: name
@@ -1073,6 +1082,9 @@ contains
     call h5gclose_f(g_id, h5_error)
 
   end subroutine h5md_create_obs_d2
+
+
+
 
   !> Takes a single value and appends it to the appropriate dataset.
   !! @param ID h5md_t variable.
