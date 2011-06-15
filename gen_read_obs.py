@@ -60,7 +60,7 @@ for t_k,t_v in types.iteritems():
     start(1:%i) = 0
     num(1:%i) = dims(1:%i)
 """ % (rank-1, rank-1, rank-1)
-        s+="""    start(%i) = idx
+        s+="""    start(%i) = idx-1
     num(%i) = 1
     call h5sselect_hyperslab_f(obs_s, H5S_SELECT_SET_F, start, num, h5_error)
     call h5dread_f(ID%% d_id, %s, data, num, h5_error, mem_space_id=mem_s, file_space_id=obs_s)

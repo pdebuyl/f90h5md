@@ -1380,7 +1380,7 @@ contains
 
     start(1:1) = 0
     num(1:1) = dims(1:1)
-    start(2) = idx
+    start(2) = idx-1
     num(2) = 1
     call h5sselect_hyperslab_f(obs_s, H5S_SELECT_SET_F, start, num, h5_error)
     call h5dread_f(ID% d_id, H5T_NATIVE_INTEGER, data, num, h5_error, mem_space_id=mem_s, file_space_id=obs_s)
@@ -1418,7 +1418,7 @@ contains
 
     call h5dget_space_f(ID% d_id , obs_s, h5_error)
     call h5sget_simple_extent_dims_f(obs_s, dims, max_dims, h5_error)
-    start(1) = idx
+    start(1) = idx-1
     num(1) = 1
     call h5sselect_hyperslab_f(obs_s, H5S_SELECT_SET_F, start, num, h5_error)
     call h5dread_f(ID% d_id, H5T_NATIVE_INTEGER, data, num, h5_error, mem_space_id=mem_s, file_space_id=obs_s)
@@ -1459,7 +1459,7 @@ contains
 
     start(1:2) = 0
     num(1:2) = dims(1:2)
-    start(3) = idx
+    start(3) = idx-1
     num(3) = 1
     call h5sselect_hyperslab_f(obs_s, H5S_SELECT_SET_F, start, num, h5_error)
     call h5dread_f(ID% d_id, H5T_NATIVE_INTEGER, data, num, h5_error, mem_space_id=mem_s, file_space_id=obs_s)
@@ -1500,7 +1500,7 @@ contains
 
     start(1:1) = 0
     num(1:1) = dims(1:1)
-    start(2) = idx
+    start(2) = idx-1
     num(2) = 1
     call h5sselect_hyperslab_f(obs_s, H5S_SELECT_SET_F, start, num, h5_error)
     call h5dread_f(ID% d_id, H5T_NATIVE_DOUBLE, data, num, h5_error, mem_space_id=mem_s, file_space_id=obs_s)
@@ -1538,7 +1538,7 @@ contains
 
     call h5dget_space_f(ID% d_id , obs_s, h5_error)
     call h5sget_simple_extent_dims_f(obs_s, dims, max_dims, h5_error)
-    start(1) = idx
+    start(1) = idx-1
     num(1) = 1
     call h5sselect_hyperslab_f(obs_s, H5S_SELECT_SET_F, start, num, h5_error)
     call h5dread_f(ID% d_id, H5T_NATIVE_DOUBLE, data, num, h5_error, mem_space_id=mem_s, file_space_id=obs_s)
@@ -1579,7 +1579,7 @@ contains
 
     start(1:2) = 0
     num(1:2) = dims(1:2)
-    start(3) = idx
+    start(3) = idx-1
     num(3) = 1
     call h5sselect_hyperslab_f(obs_s, H5S_SELECT_SET_F, start, num, h5_error)
     call h5dread_f(ID% d_id, H5T_NATIVE_DOUBLE, data, num, h5_error, mem_space_id=mem_s, file_space_id=obs_s)
