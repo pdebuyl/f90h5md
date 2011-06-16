@@ -312,6 +312,7 @@ contains
     integer :: filter_info
 
     if ( (trajectory_name .ne. 'position') .and. (trajectory_name .ne. 'velocity') &
+         .and. (trajectory_name .ne. 'jumps') &
          .and. (trajectory_name .ne. 'force') .and. (trajectory_name .ne. 'species') ) then
        write(*,*) 'non conforming trajectory name in h5md_add_trajectory_data'
        stop
@@ -363,7 +364,7 @@ contains
        call h5pset_szip_f(plist, H5_SZIP_NN_OM_F, 8, h5_error)
     end if
     call h5pset_chunk_f(plist, rank, chunk_dims, h5_error)
-    if (trajectory_name .ne. 'species') then
+    if (trajectory_name .ne. 'species' .and. trajectory_name .ne. 'jumps') then
        call h5dcreate_f(g_id, 'coordinates', H5T_NATIVE_DOUBLE, s_id, ID% d_id, h5_error, plist)
     else
        call h5dcreate_f(g_id, 'coordinates', H5T_NATIVE_INTEGER, s_id, ID% d_id, h5_error, plist)
