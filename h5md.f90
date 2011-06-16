@@ -294,7 +294,7 @@ contains
   !! dimension
   !! @param link_from is the name of another trajectory from which the time can be copied
   !! @param compress Switch to toggle SZIP compression.
-  subroutine h5md_add_trajectory_data(file_id, trajectory_name, N, D, ID, group_name, species_react, link_from, compress_in)
+  subroutine h5md_add_trajectory_data(file_id, trajectory_name, N, D, ID, group_name, species_react, link_from, compress)
     integer(HID_T), intent(in) :: file_id
     character(len=*), intent(in) :: trajectory_name
     integer, intent(in) :: N, D
@@ -302,13 +302,13 @@ contains
     character(len=*), intent(in), optional :: group_name
     logical, intent(in), optional :: species_react
     character(len=*), intent(in), optional :: link_from
-    logical, intent(in), optional :: compress_in
+    logical, intent(in), optional :: compress
     
     character(len=128) :: path
     integer :: rank
     integer(HSIZE_T) :: dims(3), max_dims(3), chunk_dims(3)
     integer(HID_T) :: traj_g_id, g_id, s_id, plist
-    logical :: sz_avail, sz_encode, compress
+    logical :: sz_avail, sz_encode, compress_var
     integer :: filter_info
 
     if ( (trajectory_name .ne. 'position') .and. (trajectory_name .ne. 'velocity') &
@@ -317,10 +317,10 @@ contains
        stop
     end if
     
-    if (present(compress_in)) then
-       compress = compress_in
+    if (present(compress)) then
+       compress_var = compress
     else
-       compress = .false.
+       compress_var = .false.
     end if
 
     if (present(group_name)) then
@@ -354,7 +354,7 @@ contains
 
     call h5screate_simple_f(rank, dims, s_id, h5_error, max_dims)
     call h5pcreate_f(H5P_DATASET_CREATE_F, plist, h5_error)
-    if (compress) then
+    if (compress_var) then
        call h5zfilter_avail_f(H5Z_FILTER_SZIP_F,sz_avail, h5_error)
        if (.not.sz_avail) stop 'SZIP filter not available'
        CALL h5zget_filter_info_f(H5Z_FILTER_SZIP_F, filter_info, h5_error)
