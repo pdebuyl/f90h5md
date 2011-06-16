@@ -294,7 +294,7 @@ contains
   !! dimension
   !! @param link_from is the name of another trajectory from which the time can be copied
   !! @param compress Switch to toggle SZIP compression.
-  subroutine h5md_add_trajectory_data(file_id, trajectory_name, N, D, ID, group_name, species_react, link_from, compress)
+  subroutine h5md_add_trajectory_data(file_id, trajectory_name, N, D, ID, group_name, species_react, link_from, compress_in)
     integer(HID_T), intent(in) :: file_id
     character(len=*), intent(in) :: trajectory_name
     integer, intent(in) :: N, D
@@ -302,19 +302,25 @@ contains
     character(len=*), intent(in), optional :: group_name
     logical, intent(in), optional :: species_react
     character(len=*), intent(in), optional :: link_from
-    logical, intent(in), optional :: compress
+    logical, intent(in), optional :: compress_in
     
     character(len=128) :: path
     integer :: rank
     integer(HSIZE_T) :: dims(3), max_dims(3), chunk_dims(3)
     integer(HID_T) :: traj_g_id, g_id, s_id, plist
-    logical :: sz_avail, sz_encode
+    logical :: sz_avail, sz_encode, compress
     integer :: filter_info
 
     if ( (trajectory_name .ne. 'position') .and. (trajectory_name .ne. 'velocity') &
          .and. (trajectory_name .ne. 'force') .and. (trajectory_name .ne. 'species') ) then
        write(*,*) 'non conforming trajectory name in h5md_add_trajectory_data'
        stop
+    end if
+    
+    if (present(compress_in)) then
+       compress = compress_in
+    else
+       compress = .false.
     end if
 
     if (present(group_name)) then
