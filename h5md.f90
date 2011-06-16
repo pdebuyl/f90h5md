@@ -293,7 +293,8 @@ contains
   !! time dependent, if set to .false., 'species' will not possess the time
   !! dimension
   !! @param link_from is the name of another trajectory from which the time can be copied
-  subroutine h5md_add_trajectory_data(file_id, trajectory_name, N, D, ID, group_name, species_react, link_from)
+  !! @param compress Switch to toggle SZIP compression.
+  subroutine h5md_add_trajectory_data(file_id, trajectory_name, N, D, ID, group_name, species_react, link_from, compress)
     integer(HID_T), intent(in) :: file_id
     character(len=*), intent(in) :: trajectory_name
     integer, intent(in) :: N, D
@@ -301,11 +302,14 @@ contains
     character(len=*), intent(in), optional :: group_name
     logical, intent(in), optional :: species_react
     character(len=*), intent(in), optional :: link_from
+    logical, intent(in), optional :: compress
     
     character(len=128) :: path
     integer :: rank
     integer(HSIZE_T) :: dims(3), max_dims(3), chunk_dims(3)
     integer(HID_T) :: traj_g_id, g_id, s_id, plist
+    logical :: sz_avail, sz_encode
+    integer :: filter_info
 
     if ( (trajectory_name .ne. 'position') .and. (trajectory_name .ne. 'velocity') &
          .and. (trajectory_name .ne. 'force') .and. (trajectory_name .ne. 'species') ) then
@@ -344,6 +348,14 @@ contains
 
     call h5screate_simple_f(rank, dims, s_id, h5_error, max_dims)
     call h5pcreate_f(H5P_DATASET_CREATE_F, plist, h5_error)
+    if (compress) then
+       call h5zfilter_avail_f(H5Z_FILTER_SZIP,sz_avail, h5_error)
+       if (.not.sz_avail) stop 'SZIP filter not available'
+       CALL h5zget_filter_info_f(H5Z_FILTER_SZIP_F, filter_info, h5_error)
+       sz_encode = IOR(H5Z_FILTER_ENCODE_ENABLED_F,H5Z_FILTER_DECODE_ENABLED_F)
+       if (sz_encode .ne. filter_info) stop 'SZIP filter not available for encoding and decoding'
+       call h5pset_szip_f(plist, H5_SZIP_NN_OM_F, 8, h5_error)
+    end if
     call h5pset_chunk_f(plist, rank, chunk_dims, h5_error)
     if (trajectory_name .ne. 'species') then
        call h5dcreate_f(g_id, 'coordinates', H5T_NATIVE_DOUBLE, s_id, ID% d_id, h5_error, plist)
