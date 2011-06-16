@@ -349,7 +349,7 @@ contains
     call h5screate_simple_f(rank, dims, s_id, h5_error, max_dims)
     call h5pcreate_f(H5P_DATASET_CREATE_F, plist, h5_error)
     if (compress) then
-       call h5zfilter_avail_f(H5Z_FILTER_SZIP,sz_avail, h5_error)
+       call h5zfilter_avail_f(H5Z_FILTER_SZIP_F,sz_avail, h5_error)
        if (.not.sz_avail) stop 'SZIP filter not available'
        CALL h5zget_filter_info_f(H5Z_FILTER_SZIP_F, filter_info, h5_error)
        sz_encode = IOR(H5Z_FILTER_ENCODE_ENABLED_F,H5Z_FILTER_DECODE_ENABLED_F)
