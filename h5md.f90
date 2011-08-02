@@ -308,8 +308,8 @@ contains
     integer :: rank
     integer(HSIZE_T) :: dims(3), max_dims(3), chunk_dims(3)
     integer(HID_T) :: traj_g_id, g_id, s_id, plist
-    logical :: sz_avail, sz_encode, compress_var
-    integer :: filter_info
+    logical :: sz_avail, compress_var
+    integer :: filter_info, sz_encode
 
     if ( (trajectory_name .ne. 'position') .and. (trajectory_name .ne. 'velocity') &
          .and. (trajectory_name .ne. 'jumps') &
