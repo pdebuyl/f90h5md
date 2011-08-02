@@ -32,12 +32,9 @@ for t_k,t_v in types.iteritems():
     double precision, intent(in) :: time
 
     integer(HID_T) :: obs_s, mem_s
-    integer(HSIZE_T), allocatable :: dims(:), max_dims(:), start(:), num(:)
-    integer :: rank
+    integer(HSIZE_T) :: dims(%i), max_dims(%i), start(%i), num(%i)
 
-    rank = %i
-    allocate(dims(rank)) ; allocate(max_dims(rank)) ; allocate(start(rank)) ; allocate(num(rank))
-""" % (t_k,d_k,t_v,d_v,rank)
+""" % (t_k,d_k,t_v,d_v,rank,rank,rank,rank)
         if (d_k!='s'):
             s+="""
     dims(1:%i) = shape(data)
@@ -68,8 +65,6 @@ for t_k,t_v in types.iteritems():
     call h5dwrite_f(ID%% d_id, %s, data, num, h5_error, mem_space_id=mem_s, file_space_id=obs_s)
     call h5sclose_f(obs_s, h5_error)
     call h5sclose_f(mem_s, h5_error)
-
-    deallocate(dims) ; deallocate(max_dims) ; deallocate(start) ; deallocate(num)
 
     call h5md_append_step_time(ID%% s_id, ID%% t_id, present_step, time)
        

@@ -444,121 +444,6 @@ contains
 
   end subroutine h5md_open_trajectory
 
-  !> adds a "time frame" to a trajectory
-  !! @param ID is the trajectory h5md_t reference.
-  !! @param data is the actual data of dim (D,N).
-  !! @param present_step is the integer step of simulation. if the linked 'step' dataset's latest value
-  !! is present_step, 'step' and 'time' are not updated. Else, they are.
-  !! @param time is the real value of the simulation time.
-  !! @todo should be doubled for integer and real values, with explicit interfacing
-  subroutine h5md_write_trajectory_data_d(ID, data, present_step, time)
-    type(h5md_t), intent(inout) :: ID
-    double precision, intent(in) :: data(:,:)
-    integer, intent(in) :: present_step
-    double precision, intent(in) :: time
-    
-    integer(HID_T) :: d_file_space, mem_s, step_id, step_s
-    integer(HSIZE_T) :: dims(3), max_dims(3), start(3), num(3)
-    integer :: last_step(1)
-    double precision :: last_time(1)
-
-    dims(1:2) = shape(data)
-    call h5screate_simple_f(2, dims, mem_s, h5_error)
-
-    call h5dget_space_f(ID% d_id, d_file_space, h5_error)
-    call h5sget_simple_extent_dims_f(d_file_space, dims, max_dims, h5_error)
-    dims(3) = dims(3) + 1
-    call h5sclose_f(d_file_space, h5_error)
-    call h5dset_extent_f(ID% d_id, dims, h5_error)
-    call h5dget_space_f(ID% d_id, d_file_space, h5_error)
-
-    start(1) = 0 ; start(2) = 0 ; start(3) = dims(3)-1
-    num(1) = dims(1) ; num(2) = dims(2) ; num(3) = 1
-
-    call h5sselect_hyperslab_f(d_file_space, H5S_SELECT_SET_F, start, num, h5_error)
-    call h5dwrite_f(ID% d_id, H5T_NATIVE_DOUBLE, data, dims, h5_error, mem_space_id=mem_s, file_space_id=d_file_space)
-    call h5sclose_f(d_file_space, h5_error)
-    call h5sclose_f(mem_s, h5_error)
-
-    call h5md_append_step_time(ID% s_id, ID% t_id, present_step, time)
-
-  end subroutine h5md_write_trajectory_data_d
-
-  !> Load a time frame from a time frame in a H5MD file.
-  !>
-  !> @param ID h5md_t variable of the dataset
-  !> @param data the coordinates array
-  !> @param step the integer step from which to choose the data. Currently the only supported value is -1 for the last step.
-  subroutine h5md_load_trajectory_data_d(ID, data, step)
-    type(h5md_t), intent(inout) :: ID
-    double precision, intent(inout) :: data(:,:)
-    integer, intent(in) :: step
-
-    integer(HID_T) :: file_space, mem_space
-    integer :: ndims, data_shape(2)
-    integer(HSIZE_T) :: dims(3), max_dims(3), start(3)
-
-    if (step /= -1) then
-       stop 'unknown step in h5md_load_trajectory_data'
-    end if
-
-    call h5dget_space_f(ID%d_id , file_space, h5_error)
-    call h5sget_simple_extent_ndims_f(file_space, ndims, h5_error)
-    if (ndims /= 3) stop 'wrong number of dimensions in h5md_load_trajectory_data'
-    call h5sget_simple_extent_dims_f(file_space, dims, max_dims, h5_error)
-    data_shape = shape(data)
-    if (data_shape(1) /= dims(1) .or. data_shape(2) /= dims(2)) then
-       stop 'wrong dimensions for data in h5md_load_trajectory_data'
-    end if
-    if (dims(3) < 1) stop 'no data in h5md_load_trajectory_data'
-    start = (/ 0, 0, 0 /)
-    start(3) = dims(3)-1
-    dims(3) = 1
-    call h5sselect_hyperslab_f(file_space, H5S_SELECT_SET_F, start, dims, h5_error)
-    call h5dread_f(ID%d_id, H5T_NATIVE_DOUBLE, data, dims, h5_error, file_space_id=file_space)
-    call h5sclose_f(file_space, h5_error)
-
-  end subroutine h5md_load_trajectory_data_d
-
-  !> Adds a "time frame" to a trajectory
-  !! @param ID is the trajectory dataset.
-  !! @param data is the actual data of dim (D,N).
-  !! @param present_step is the integer step of simulation. if the linked 'step' dataset's latest value
-  !! is present_step, 'step' and 'time' are not updated. Else, they are.
-  !! @param time is the real value of the simulation time.
-  !! @todo should be doubled for integer and real values, with explicit interfacing
-  subroutine h5md_write_trajectory_data_d1d(ID, data, present_step, time)
-    type(h5md_t), intent(inout) :: ID
-    double precision, intent(in) :: data(:)
-    integer, intent(in) :: present_step
-    double precision, intent(in) :: time
-    
-    integer(HID_T) :: d_file_space, mem_s, step_id, step_s
-    integer(HSIZE_T) :: dims(3), max_dims(3), start(3), num(3)
-    integer :: last_step(1)
-    double precision :: last_time(1)
-
-    dims(1:1) = shape(data)
-    call h5screate_simple_f(1, dims, mem_s, h5_error)
-
-    call h5dget_space_f(ID% d_id, d_file_space, h5_error)
-    call h5sget_simple_extent_dims_f(d_file_space, dims, max_dims, h5_error)
-    dims(3) = dims(3) + 1
-    call h5sclose_f(d_file_space, h5_error)
-    call h5dset_extent_f(ID% d_id, dims, h5_error)
-    call h5dget_space_f(ID% d_id, d_file_space, h5_error)
-
-    start(1) = 0 ; start(2) = 0 ; start(3) = dims(3)-1
-    num(1) = dims(1) ; num(2) = dims(2) ; num(3) = 1
-
-    call h5sselect_hyperslab_f(d_file_space, H5S_SELECT_SET_F, start, num, h5_error)
-    call h5dwrite_f(ID% d_id, H5T_NATIVE_DOUBLE, data, dims, h5_error, mem_space_id=mem_s, file_space_id=d_file_space)
-    call h5sclose_f(d_file_space, h5_error)
-    call h5sclose_f(mem_s, h5_error)
-
-    call h5md_append_step_time(ID% s_id, ID% t_id, present_step, time)
-
-  end subroutine h5md_write_trajectory_data_d1d
 
   !> Appends step and time information.
   !! If the last step is the present step, does nothing. Else, append the data.
@@ -1126,11 +1011,8 @@ contains
     double precision, intent(in) :: time
 
     integer(HID_T) :: obs_s, mem_s
-    integer(HSIZE_T), allocatable :: dims(:), max_dims(:), start(:), num(:)
-    integer :: rank
+    integer(HSIZE_T) :: dims(2), max_dims(2), start(2), num(2)
 
-    rank = 2
-    allocate(dims(rank)) ; allocate(max_dims(rank)) ; allocate(start(rank)) ; allocate(num(rank))
 
     dims(1:1) = shape(data)
 
@@ -1151,8 +1033,6 @@ contains
     call h5dwrite_f(ID% d_id, H5T_NATIVE_INTEGER, data, num, h5_error, mem_space_id=mem_s, file_space_id=obs_s)
     call h5sclose_f(obs_s, h5_error)
     call h5sclose_f(mem_s, h5_error)
-
-    deallocate(dims) ; deallocate(max_dims) ; deallocate(start) ; deallocate(num)
 
     call h5md_append_step_time(ID% s_id, ID% t_id, present_step, time)
        
@@ -1171,11 +1051,8 @@ contains
     double precision, intent(in) :: time
 
     integer(HID_T) :: obs_s, mem_s
-    integer(HSIZE_T), allocatable :: dims(:), max_dims(:), start(:), num(:)
-    integer :: rank
+    integer(HSIZE_T) :: dims(1), max_dims(1), start(1), num(1)
 
-    rank = 1
-    allocate(dims(rank)) ; allocate(max_dims(rank)) ; allocate(start(rank)) ; allocate(num(rank))
 
     dims(1) = 1
 
@@ -1194,8 +1071,6 @@ contains
     call h5sclose_f(obs_s, h5_error)
     call h5sclose_f(mem_s, h5_error)
 
-    deallocate(dims) ; deallocate(max_dims) ; deallocate(start) ; deallocate(num)
-
     call h5md_append_step_time(ID% s_id, ID% t_id, present_step, time)
        
   end subroutine h5md_write_obs_is
@@ -1213,11 +1088,8 @@ contains
     double precision, intent(in) :: time
 
     integer(HID_T) :: obs_s, mem_s
-    integer(HSIZE_T), allocatable :: dims(:), max_dims(:), start(:), num(:)
-    integer :: rank
+    integer(HSIZE_T) :: dims(3), max_dims(3), start(3), num(3)
 
-    rank = 3
-    allocate(dims(rank)) ; allocate(max_dims(rank)) ; allocate(start(rank)) ; allocate(num(rank))
 
     dims(1:2) = shape(data)
 
@@ -1239,8 +1111,6 @@ contains
     call h5sclose_f(obs_s, h5_error)
     call h5sclose_f(mem_s, h5_error)
 
-    deallocate(dims) ; deallocate(max_dims) ; deallocate(start) ; deallocate(num)
-
     call h5md_append_step_time(ID% s_id, ID% t_id, present_step, time)
        
   end subroutine h5md_write_obs_i2
@@ -1258,11 +1128,8 @@ contains
     double precision, intent(in) :: time
 
     integer(HID_T) :: obs_s, mem_s
-    integer(HSIZE_T), allocatable :: dims(:), max_dims(:), start(:), num(:)
-    integer :: rank
+    integer(HSIZE_T) :: dims(2), max_dims(2), start(2), num(2)
 
-    rank = 2
-    allocate(dims(rank)) ; allocate(max_dims(rank)) ; allocate(start(rank)) ; allocate(num(rank))
 
     dims(1:1) = shape(data)
 
@@ -1284,8 +1151,6 @@ contains
     call h5sclose_f(obs_s, h5_error)
     call h5sclose_f(mem_s, h5_error)
 
-    deallocate(dims) ; deallocate(max_dims) ; deallocate(start) ; deallocate(num)
-
     call h5md_append_step_time(ID% s_id, ID% t_id, present_step, time)
        
   end subroutine h5md_write_obs_d1
@@ -1303,11 +1168,8 @@ contains
     double precision, intent(in) :: time
 
     integer(HID_T) :: obs_s, mem_s
-    integer(HSIZE_T), allocatable :: dims(:), max_dims(:), start(:), num(:)
-    integer :: rank
+    integer(HSIZE_T) :: dims(1), max_dims(1), start(1), num(1)
 
-    rank = 1
-    allocate(dims(rank)) ; allocate(max_dims(rank)) ; allocate(start(rank)) ; allocate(num(rank))
 
     dims(1) = 1
 
@@ -1326,8 +1188,6 @@ contains
     call h5sclose_f(obs_s, h5_error)
     call h5sclose_f(mem_s, h5_error)
 
-    deallocate(dims) ; deallocate(max_dims) ; deallocate(start) ; deallocate(num)
-
     call h5md_append_step_time(ID% s_id, ID% t_id, present_step, time)
        
   end subroutine h5md_write_obs_ds
@@ -1345,11 +1205,8 @@ contains
     double precision, intent(in) :: time
 
     integer(HID_T) :: obs_s, mem_s
-    integer(HSIZE_T), allocatable :: dims(:), max_dims(:), start(:), num(:)
-    integer :: rank
+    integer(HSIZE_T) :: dims(3), max_dims(3), start(3), num(3)
 
-    rank = 3
-    allocate(dims(rank)) ; allocate(max_dims(rank)) ; allocate(start(rank)) ; allocate(num(rank))
 
     dims(1:2) = shape(data)
 
@@ -1370,8 +1227,6 @@ contains
     call h5dwrite_f(ID% d_id, H5T_NATIVE_DOUBLE, data, num, h5_error, mem_space_id=mem_s, file_space_id=obs_s)
     call h5sclose_f(obs_s, h5_error)
     call h5sclose_f(mem_s, h5_error)
-
-    deallocate(dims) ; deallocate(max_dims) ; deallocate(start) ; deallocate(num)
 
     call h5md_append_step_time(ID% s_id, ID% t_id, present_step, time)
        
@@ -1630,13 +1485,7 @@ contains
     integer, intent(in) :: data(:)
 
     integer(HID_T) :: par_d, par_s
-    integer(HSIZE_T), allocatable :: dims(:)
-    integer(HSIZE_T) :: a_size(1)
-    integer :: rank
-
-    rank = 1
-    if (rank>0) allocate(dims(rank))
-
+    integer(HSIZE_T) :: dims(1)
     dims = shape(data)
     call h5screate_simple_f(1, dims, par_s, h5_error)
 
@@ -1645,8 +1494,6 @@ contains
     call h5dwrite_f(par_d, H5T_NATIVE_INTEGER, data, dims, h5_error)
 
     call h5sclose_f(par_s, h5_error)
-
-    if (rank>0) deallocate(dims)
 
        
   end subroutine h5md_write_par_i1
@@ -1662,13 +1509,7 @@ contains
     integer, intent(in) :: data
 
     integer(HID_T) :: par_d, par_s
-    integer(HSIZE_T), allocatable :: dims(:)
-    integer(HSIZE_T) :: a_size(1)
-    integer :: rank
-
-    rank = 0
-    if (rank>0) allocate(dims(rank))
-
+    integer(HSIZE_T) :: dims(0)
     call h5screate_f(H5S_SCALAR_F, par_s, h5_error)
 
     call h5dcreate_f(file_id, 'parameters/'//name, H5T_NATIVE_INTEGER, par_s, par_d, h5_error)
@@ -1676,8 +1517,6 @@ contains
     call h5dwrite_f(par_d, H5T_NATIVE_INTEGER, data, dims, h5_error)
 
     call h5sclose_f(par_s, h5_error)
-
-    if (rank>0) deallocate(dims)
 
        
   end subroutine h5md_write_par_is
@@ -1693,13 +1532,7 @@ contains
     integer, intent(in) :: data(:,:)
 
     integer(HID_T) :: par_d, par_s
-    integer(HSIZE_T), allocatable :: dims(:)
-    integer(HSIZE_T) :: a_size(1)
-    integer :: rank
-
-    rank = 2
-    if (rank>0) allocate(dims(rank))
-
+    integer(HSIZE_T) :: dims(2)
     dims = shape(data)
     call h5screate_simple_f(2, dims, par_s, h5_error)
 
@@ -1708,8 +1541,6 @@ contains
     call h5dwrite_f(par_d, H5T_NATIVE_INTEGER, data, dims, h5_error)
 
     call h5sclose_f(par_s, h5_error)
-
-    if (rank>0) deallocate(dims)
 
        
   end subroutine h5md_write_par_i2
@@ -1725,14 +1556,9 @@ contains
     character(len=*), intent(in) :: data
 
     integer(HID_T) :: par_d, par_s
-    integer(HSIZE_T), allocatable :: dims(:)
+    integer(HSIZE_T) :: dims(0)
     integer(HSIZE_T) :: a_size(1)
-    integer :: rank
     integer(HID_T) :: a_type
-
-    rank = 0
-    if (rank>0) allocate(dims(rank))
-
     a_size(1) = len(data)
     call h5tcopy_f(H5T_NATIVE_CHARACTER, a_type, h5_error)
     call h5tset_size_f(a_type, a_size(1), h5_error)
@@ -1743,8 +1569,6 @@ contains
     call h5dwrite_f(par_d, a_type, data, dims, h5_error)
 
     call h5sclose_f(par_s, h5_error)
-
-    if (rank>0) deallocate(dims)
 
        
   end subroutine h5md_write_par_cs
@@ -1760,13 +1584,7 @@ contains
     double precision, intent(in) :: data(:)
 
     integer(HID_T) :: par_d, par_s
-    integer(HSIZE_T), allocatable :: dims(:)
-    integer(HSIZE_T) :: a_size(1)
-    integer :: rank
-
-    rank = 1
-    if (rank>0) allocate(dims(rank))
-
+    integer(HSIZE_T) :: dims(1)
     dims = shape(data)
     call h5screate_simple_f(1, dims, par_s, h5_error)
 
@@ -1775,8 +1593,6 @@ contains
     call h5dwrite_f(par_d, H5T_NATIVE_DOUBLE, data, dims, h5_error)
 
     call h5sclose_f(par_s, h5_error)
-
-    if (rank>0) deallocate(dims)
 
        
   end subroutine h5md_write_par_d1
@@ -1792,13 +1608,7 @@ contains
     double precision, intent(in) :: data
 
     integer(HID_T) :: par_d, par_s
-    integer(HSIZE_T), allocatable :: dims(:)
-    integer(HSIZE_T) :: a_size(1)
-    integer :: rank
-
-    rank = 0
-    if (rank>0) allocate(dims(rank))
-
+    integer(HSIZE_T) :: dims(0)
     call h5screate_f(H5S_SCALAR_F, par_s, h5_error)
 
     call h5dcreate_f(file_id, 'parameters/'//name, H5T_NATIVE_DOUBLE, par_s, par_d, h5_error)
@@ -1806,8 +1616,6 @@ contains
     call h5dwrite_f(par_d, H5T_NATIVE_DOUBLE, data, dims, h5_error)
 
     call h5sclose_f(par_s, h5_error)
-
-    if (rank>0) deallocate(dims)
 
        
   end subroutine h5md_write_par_ds
@@ -1823,13 +1631,7 @@ contains
     double precision, intent(in) :: data(:,:)
 
     integer(HID_T) :: par_d, par_s
-    integer(HSIZE_T), allocatable :: dims(:)
-    integer(HSIZE_T) :: a_size(1)
-    integer :: rank
-
-    rank = 2
-    if (rank>0) allocate(dims(rank))
-
+    integer(HSIZE_T) :: dims(2)
     dims = shape(data)
     call h5screate_simple_f(2, dims, par_s, h5_error)
 
@@ -1838,8 +1640,6 @@ contains
     call h5dwrite_f(par_d, H5T_NATIVE_DOUBLE, data, dims, h5_error)
 
     call h5sclose_f(par_s, h5_error)
-
-    if (rank>0) deallocate(dims)
 
        
   end subroutine h5md_write_par_d2
@@ -1855,9 +1655,7 @@ contains
     logical, intent(in) :: data(:)
 
     integer(HID_T) :: par_d, par_s
-    integer(HSIZE_T), allocatable :: dims(:)
-    integer(HSIZE_T) :: a_size(1)
-    integer :: rank
+    integer(HSIZE_T) :: dims(1)
     integer, allocatable :: data_int(:)
     allocate(data_int(size(data)))
     where (data)
@@ -1865,10 +1663,6 @@ contains
     elsewhere
         data_int=0
     endwhere
-
-
-    rank = 1
-    if (rank>0) allocate(dims(rank))
 
     dims = shape(data)
     call h5screate_simple_f(1, dims, par_s, h5_error)
@@ -1879,8 +1673,6 @@ contains
 
     deallocate(data_int)
     call h5sclose_f(par_s, h5_error)
-
-    if (rank>0) deallocate(dims)
 
        
   end subroutine h5md_write_par_l1
@@ -1896,19 +1688,13 @@ contains
     logical, intent(in) :: data
 
     integer(HID_T) :: par_d, par_s
-    integer(HSIZE_T), allocatable :: dims(:)
-    integer(HSIZE_T) :: a_size(1)
-    integer :: rank
+    integer(HSIZE_T) :: dims(0)
     integer :: data_int
     if (data) then
         data_int = 1
     else
         data_int = 0
     end if
-
-
-    rank = 0
-    if (rank>0) allocate(dims(rank))
 
     call h5screate_f(H5S_SCALAR_F, par_s, h5_error)
 
@@ -1917,8 +1703,6 @@ contains
     call h5dwrite_f(par_d, H5T_NATIVE_INTEGER, data_int, dims, h5_error)
 
     call h5sclose_f(par_s, h5_error)
-
-    if (rank>0) deallocate(dims)
 
        
   end subroutine h5md_write_par_ls
@@ -1934,9 +1718,7 @@ contains
     logical, intent(in) :: data(:,:)
 
     integer(HID_T) :: par_d, par_s
-    integer(HSIZE_T), allocatable :: dims(:)
-    integer(HSIZE_T) :: a_size(1)
-    integer :: rank
+    integer(HSIZE_T) :: dims(2)
     integer, allocatable :: data_int(:,:)
     allocate(data_int(size(data,dim=1),size(data,dim=2)))
     where (data)
@@ -1944,10 +1726,6 @@ contains
     elsewhere
         data_int=0
     endwhere
-
-
-    rank = 2
-    if (rank>0) allocate(dims(rank))
 
     dims = shape(data)
     call h5screate_simple_f(2, dims, par_s, h5_error)
@@ -1958,8 +1736,6 @@ contains
 
     deallocate(data_int)
     call h5sclose_f(par_s, h5_error)
-
-    if (rank>0) deallocate(dims)
 
        
   end subroutine h5md_write_par_l2
@@ -1978,7 +1754,6 @@ contains
 
     integer(HID_T) :: par_d, par_s
     integer(HSIZE_T), allocatable :: dims(:)
-    integer(HSIZE_T) :: a_size(1)
     integer :: rank
 
     rank = 1
@@ -2010,7 +1785,6 @@ contains
 
     integer(HID_T) :: par_d, par_s
     integer(HSIZE_T), allocatable :: dims(:)
-    integer(HSIZE_T) :: a_size(1)
     integer :: rank
 
     rank = 0
@@ -2041,7 +1815,6 @@ contains
 
     integer(HID_T) :: par_d, par_s
     integer(HSIZE_T), allocatable :: dims(:)
-    integer(HSIZE_T) :: a_size(1)
     integer :: rank
 
     rank = 2
@@ -2073,7 +1846,6 @@ contains
 
     integer(HID_T) :: par_d, par_s
     integer(HSIZE_T), allocatable :: dims(:)
-    integer(HSIZE_T) :: a_size(1)
     integer :: rank
 
     rank = 1
@@ -2105,7 +1877,6 @@ contains
 
     integer(HID_T) :: par_d, par_s
     integer(HSIZE_T), allocatable :: dims(:)
-    integer(HSIZE_T) :: a_size(1)
     integer :: rank
 
     rank = 0
@@ -2136,7 +1907,6 @@ contains
 
     integer(HID_T) :: par_d, par_s
     integer(HSIZE_T), allocatable :: dims(:)
-    integer(HSIZE_T) :: a_size(1)
     integer :: rank
 
     rank = 2
@@ -2168,7 +1938,6 @@ contains
 
     integer(HID_T) :: par_d, par_s
     integer(HSIZE_T), allocatable :: dims(:)
-    integer(HSIZE_T) :: a_size(1)
     integer :: rank
     integer, allocatable :: data_int(:)
     allocate(data_int(size(data)))
@@ -2215,7 +1984,6 @@ contains
 
     integer(HID_T) :: par_d, par_s
     integer(HSIZE_T), allocatable :: dims(:)
-    integer(HSIZE_T) :: a_size(1)
     integer :: rank
     integer :: data_int
     if (data) then
@@ -2259,7 +2027,6 @@ contains
 
     integer(HID_T) :: par_d, par_s
     integer(HSIZE_T), allocatable :: dims(:)
-    integer(HSIZE_T) :: a_size(1)
     integer :: rank
     integer, allocatable :: data_int(:,:)
     allocate(data_int(size(data,dim=1),size(data,dim=2)))

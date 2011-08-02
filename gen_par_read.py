@@ -41,10 +41,10 @@ for t_k,t_v in types.iteritems():
 
     integer(HID_T) :: par_d, par_s
     integer(HSIZE_T), allocatable :: dims(:)
-    integer(HSIZE_T) :: a_size(1)
     integer :: rank"""  % (t_k,d_k,t_v,d_v)
         if (t_k=='c'):
             s+="""
+    integer(HSIZE_T) :: a_size(1)
     integer(HID_T) :: a_type"""
         if (t_k=='l'):
             if (d_k=='s'):

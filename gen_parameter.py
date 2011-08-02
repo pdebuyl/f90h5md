@@ -40,11 +40,10 @@ for t_k,t_v in types.iteritems():
     %s, intent(in) :: data%s
 
     integer(HID_T) :: par_d, par_s
-    integer(HSIZE_T), allocatable :: dims(:)
-    integer(HSIZE_T) :: a_size(1)
-    integer :: rank"""  % (t_k,d_k,t_v,d_v)
+    integer(HSIZE_T) :: dims(%i)"""  % (t_k,d_k,t_v,d_v,rank)
         if (t_k=='c'):
             s+="""
+    integer(HSIZE_T) :: a_size(1)
     integer(HID_T) :: a_type"""
         if (t_k=='l'):
             if (d_k=='s'):
@@ -76,11 +75,6 @@ for t_k,t_v in types.iteritems():
         data_int=0
     endwhere
 """ % (d_v,)
-        s+="""
-
-    rank = %i
-    if (rank>0) allocate(dims(rank))
-""" % (rank, )
 
         if (t_k=='c'):
             s+="""
@@ -117,8 +111,6 @@ for t_k,t_v in types.iteritems():
 
         s+="""
     call h5sclose_f(par_s, h5_error)
-
-    if (rank>0) deallocate(dims)
 
        
   end subroutine h5md_write_par_%s%s
