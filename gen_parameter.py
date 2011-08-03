@@ -24,7 +24,7 @@ for t_k,t_v in types.iteritems():
         dims_var = dims
     for d_k,d_v in dims_var.iteritems():
         if (d_k == 's'):
-            rank = 0
+            rank = 1
         else:
             rank = int(d_k)
         s=''

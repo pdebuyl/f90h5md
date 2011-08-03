@@ -1509,7 +1509,7 @@ contains
     integer, intent(in) :: data
 
     integer(HID_T) :: par_d, par_s
-    integer(HSIZE_T) :: dims(0)
+    integer(HSIZE_T) :: dims(1)
     call h5screate_f(H5S_SCALAR_F, par_s, h5_error)
 
     call h5dcreate_f(file_id, 'parameters/'//name, H5T_NATIVE_INTEGER, par_s, par_d, h5_error)
@@ -1556,7 +1556,7 @@ contains
     character(len=*), intent(in) :: data
 
     integer(HID_T) :: par_d, par_s
-    integer(HSIZE_T) :: dims(0)
+    integer(HSIZE_T) :: dims(1)
     integer(HSIZE_T) :: a_size(1)
     integer(HID_T) :: a_type
     a_size(1) = len(data)
@@ -1608,7 +1608,7 @@ contains
     double precision, intent(in) :: data
 
     integer(HID_T) :: par_d, par_s
-    integer(HSIZE_T) :: dims(0)
+    integer(HSIZE_T) :: dims(1)
     call h5screate_f(H5S_SCALAR_F, par_s, h5_error)
 
     call h5dcreate_f(file_id, 'parameters/'//name, H5T_NATIVE_DOUBLE, par_s, par_d, h5_error)
@@ -1688,7 +1688,7 @@ contains
     logical, intent(in) :: data
 
     integer(HID_T) :: par_d, par_s
-    integer(HSIZE_T) :: dims(0)
+    integer(HSIZE_T) :: dims(1)
     integer :: data_int
     if (data) then
         data_int = 1
