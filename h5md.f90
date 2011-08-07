@@ -294,7 +294,9 @@ contains
   !! dimension
   !! @param link_from is the name of another trajectory from which the time can be copied
   !! @param compress Switch to toggle SZIP compression.
-  subroutine h5md_add_trajectory_data(file_id, trajectory_name, N, D, ID, group_name, species_react, link_from, compress)
+  !! @param force_kind Force the supplied kind, "integer" or "double", for the dataset.
+  subroutine h5md_add_trajectory_data(file_id, trajectory_name, N, D, ID, group_name, species_react, &
+       link_from, compress, force_kind)
     integer(HID_T), intent(in) :: file_id
     character(len=*), intent(in) :: trajectory_name
     integer, intent(in) :: N, D
@@ -303,6 +305,7 @@ contains
     logical, intent(in), optional :: species_react
     character(len=*), intent(in), optional :: link_from
     logical, intent(in), optional :: compress
+    character(len=*), intent(in), optional :: force_kind
     
     character(len=128) :: path
     integer :: rank
@@ -311,11 +314,13 @@ contains
     logical :: sz_avail, compress_var
     integer :: filter_info, sz_encode
 
+    if (.not.present(force_kind)) then
     if ( (trajectory_name .ne. 'position') .and. (trajectory_name .ne. 'velocity') &
          .and. (trajectory_name .ne. 'jumps') &
          .and. (trajectory_name .ne. 'force') .and. (trajectory_name .ne. 'species') ) then
        write(*,*) 'non conforming trajectory name in h5md_add_trajectory_data'
        stop
+    end if
     end if
     
     if (present(compress)) then
@@ -364,10 +369,20 @@ contains
        call h5pset_szip_f(plist, H5_SZIP_NN_OM_F, 8, h5_error)
     end if
     call h5pset_chunk_f(plist, rank, chunk_dims, h5_error)
+    if (present(force_kind)) then
+       if (force_kind .eq. 'integer') then
+          call h5dcreate_f(g_id, 'coordinates', H5T_NATIVE_INTEGER, s_id, ID% d_id, h5_error, plist)
+       else if (force_kind .eq. 'double') then
+          call h5dcreate_f(g_id, 'coordinates', H5T_NATIVE_DOUBLE, s_id, ID% d_id, h5_error, plist)
+       else
+          write(*,*) 'non supported force_kind ', force_kind
+       end if
+    else
     if (trajectory_name .ne. 'species' .and. trajectory_name .ne. 'jumps') then
        call h5dcreate_f(g_id, 'coordinates', H5T_NATIVE_DOUBLE, s_id, ID% d_id, h5_error, plist)
     else
        call h5dcreate_f(g_id, 'coordinates', H5T_NATIVE_INTEGER, s_id, ID% d_id, h5_error, plist)
+    end if
     end if
     call h5pclose_f(plist, h5_error)
     call h5sclose_f(s_id, h5_error)
