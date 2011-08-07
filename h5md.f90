@@ -295,8 +295,9 @@ contains
   !! @param link_from is the name of another trajectory from which the time can be copied
   !! @param compress Switch to toggle SZIP compression.
   !! @param force_kind Force the supplied kind, "integer" or "double", for the dataset.
+  !! @param force_rank Force the dataset rank to 1, 2 or 3.
   subroutine h5md_add_trajectory_data(file_id, trajectory_name, N, D, ID, group_name, species_react, &
-       link_from, compress, force_kind)
+       link_from, compress, force_kind, force_rank)
     integer(HID_T), intent(in) :: file_id
     character(len=*), intent(in) :: trajectory_name
     integer, intent(in) :: N, D
@@ -306,6 +307,7 @@ contains
     character(len=*), intent(in), optional :: link_from
     logical, intent(in), optional :: compress
     character(len=*), intent(in), optional :: force_kind
+    integer, intent(in), optional :: force_rank
     
     character(len=128) :: path
     integer :: rank
@@ -339,23 +341,33 @@ contains
     ! g_id is opened as the container of trajectory_name
     call h5gcreate_f(traj_g_id, path, g_id, h5_error)
        
-    if (trajectory_name .eq. 'species') then
-       if (present(species_react) .and. (species_react) ) then
-          rank = 2
-          dims = (/ N, 0, 0 /)
-          max_dims = (/ N, H5S_UNLIMITED_F, 0 /)
-          chunk_dims = (/ N, 1, 0 /)
-       else
-          rank = 1
-          dims = (/ N, 0, 0 /)
-          max_dims = (/ N, 0, 0 /)
-          chunk_dims = (/ N, 0, 0 /)
-       end if
+    if (present(force_rank)) then
+       rank = force_rank
     else
-       rank = 3
+       if (trajectory_name .eq. 'species') then
+          if (present(species_react) .and. (species_react) ) then
+             rank=2
+          else
+             rank=1
+          end if
+       else
+          rank=3
+       end if
+    end if
+    if (rank.eq.3) then
        dims = (/ D, N, 0 /)
        max_dims = (/ D, N, H5S_UNLIMITED_F /)
        chunk_dims = (/ D, N, 1 /)
+    else if (rank.eq.2) then
+       dims = (/ N, 0, 0 /)
+       max_dims = (/ N, H5S_UNLIMITED_F, 0 /)
+       chunk_dims = (/ N, 1, 0 /)
+    else if (rank.eq.1) then
+       dims = (/ N, 0, 0 /)
+       max_dims = (/ N, 0, 0 /)
+       chunk_dims = (/ N, 0, 0 /)
+    else
+       write(*,*) 'the rank ', rank, ' is inappropriate in h5md_add_trajectory_data'
     end if
 
     call h5screate_simple_f(rank, dims, s_id, h5_error, max_dims)
