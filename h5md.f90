@@ -734,7 +734,7 @@ contains
     dims(2)     = 0
     max_dims(2) = H5S_UNLIMITED_F
     call h5screate_simple_f(rank, dims, file_s, h5_error, max_dims)
-    chunk_dims(2) = 1
+    chunk_dims(2) = 128
     call h5pcreate_f(H5P_DATASET_CREATE_F, plist, h5_error)
     call h5pset_chunk_f(plist, rank, chunk_dims, h5_error)
     call h5dcreate_f(g_id, 'samples', H5T_NATIVE_INTEGER, file_s, ID% d_id, h5_error, plist)
@@ -784,7 +784,7 @@ contains
     dims(1)     = 0
     max_dims(1) = H5S_UNLIMITED_F
     call h5screate_simple_f(rank, dims, file_s, h5_error, max_dims)
-    chunk_dims(1) = 1
+    chunk_dims(1) = 128
     call h5pcreate_f(H5P_DATASET_CREATE_F, plist, h5_error)
     call h5pset_chunk_f(plist, rank, chunk_dims, h5_error)
     call h5dcreate_f(g_id, 'samples', H5T_NATIVE_INTEGER, file_s, ID% d_id, h5_error, plist)
@@ -839,7 +839,7 @@ contains
     dims(3)     = 0
     max_dims(3) = H5S_UNLIMITED_F
     call h5screate_simple_f(rank, dims, file_s, h5_error, max_dims)
-    chunk_dims(3) = 1
+    chunk_dims(3) = 128
     call h5pcreate_f(H5P_DATASET_CREATE_F, plist, h5_error)
     call h5pset_chunk_f(plist, rank, chunk_dims, h5_error)
     call h5dcreate_f(g_id, 'samples', H5T_NATIVE_INTEGER, file_s, ID% d_id, h5_error, plist)
@@ -894,7 +894,7 @@ contains
     dims(2)     = 0
     max_dims(2) = H5S_UNLIMITED_F
     call h5screate_simple_f(rank, dims, file_s, h5_error, max_dims)
-    chunk_dims(2) = 1
+    chunk_dims(2) = 128
     call h5pcreate_f(H5P_DATASET_CREATE_F, plist, h5_error)
     call h5pset_chunk_f(plist, rank, chunk_dims, h5_error)
     call h5dcreate_f(g_id, 'samples', H5T_NATIVE_DOUBLE, file_s, ID% d_id, h5_error, plist)
@@ -944,7 +944,7 @@ contains
     dims(1)     = 0
     max_dims(1) = H5S_UNLIMITED_F
     call h5screate_simple_f(rank, dims, file_s, h5_error, max_dims)
-    chunk_dims(1) = 1
+    chunk_dims(1) = 128
     call h5pcreate_f(H5P_DATASET_CREATE_F, plist, h5_error)
     call h5pset_chunk_f(plist, rank, chunk_dims, h5_error)
     call h5dcreate_f(g_id, 'samples', H5T_NATIVE_DOUBLE, file_s, ID% d_id, h5_error, plist)
@@ -999,7 +999,7 @@ contains
     dims(3)     = 0
     max_dims(3) = H5S_UNLIMITED_F
     call h5screate_simple_f(rank, dims, file_s, h5_error, max_dims)
-    chunk_dims(3) = 1
+    chunk_dims(3) = 128
     call h5pcreate_f(H5P_DATASET_CREATE_F, plist, h5_error)
     call h5pset_chunk_f(plist, rank, chunk_dims, h5_error)
     call h5dcreate_f(g_id, 'samples', H5T_NATIVE_DOUBLE, file_s, ID% d_id, h5_error, plist)
