@@ -144,7 +144,7 @@ contains
     integer :: h5md_version(2), creation_time, val(8)
     integer(HID_T) :: h5_g_id, g_id
     integer(HID_T) :: a_type, a_space, a_id
-    integer(HSIZE_T) :: a_size(1)
+    integer(SIZE_T) :: a_size(1)
     integer :: months(12), i
 
     call h5fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, h5_error)
@@ -1584,7 +1584,7 @@ contains
 
     integer(HID_T) :: par_d, par_s
     integer(HSIZE_T) :: dims(1)
-    integer(HSIZE_T) :: a_size(1)
+    integer(SIZE_T) :: a_size(1)
     integer(HID_T) :: a_type
     a_size(1) = len(data)
     call h5tcopy_f(H5T_NATIVE_CHARACTER, a_type, h5_error)
