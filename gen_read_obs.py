@@ -10,6 +10,8 @@ dims = dict()
 dims['s'] = ''
 dims['1'] = '(:)'
 dims['2'] = '(:,:)'
+dims['3'] = '(:,:,:)'
+dims['4'] = '(:,:,:,:)'
 
 for t_k,t_v in types.iteritems():
     for d_k,d_v in dims.iteritems():
