@@ -2320,8 +2320,6 @@ contains
        
   end subroutine h5md_write_par_l2
 
-  
-
   !> Reads a parameter from the parameter group.
   !! @param file_id hdf5 file ID.
   !! @param name name of the parameter.
@@ -2333,12 +2331,7 @@ contains
     integer, intent(out) :: data(:)
 
     integer(HID_T) :: par_d, par_s
-    integer(HSIZE_T), allocatable :: dims(:)
-    integer :: rank
-
-    rank = 1
-    if (rank>0) allocate(dims(rank))
-
+    integer(HSIZE_T) :: dims(1)
     dims = shape(data)
     call h5screate_simple_f(1, dims, par_s, h5_error)
 
@@ -2347,8 +2340,6 @@ contains
     call h5dread_f(par_d, H5T_NATIVE_INTEGER, data, dims, h5_error)
 
     call h5sclose_f(par_s, h5_error)
-
-    if (rank>0) deallocate(dims)
 
        
   end subroutine h5md_read_par_i1
@@ -2364,12 +2355,7 @@ contains
     integer, intent(out) :: data
 
     integer(HID_T) :: par_d, par_s
-    integer(HSIZE_T), allocatable :: dims(:)
-    integer :: rank
-
-    rank = 0
-    if (rank>0) allocate(dims(rank))
-
+    integer(HSIZE_T) :: dims(1)
     call h5screate_f(H5S_SCALAR_F, par_s, h5_error)
 
     call h5dopen_f(file_id, 'parameters/'//name, par_d, h5_error)
@@ -2377,8 +2363,6 @@ contains
     call h5dread_f(par_d, H5T_NATIVE_INTEGER, data, dims, h5_error)
 
     call h5sclose_f(par_s, h5_error)
-
-    if (rank>0) deallocate(dims)
 
        
   end subroutine h5md_read_par_is
@@ -2394,12 +2378,7 @@ contains
     integer, intent(out) :: data(:,:)
 
     integer(HID_T) :: par_d, par_s
-    integer(HSIZE_T), allocatable :: dims(:)
-    integer :: rank
-
-    rank = 2
-    if (rank>0) allocate(dims(rank))
-
+    integer(HSIZE_T) :: dims(2)
     dims = shape(data)
     call h5screate_simple_f(2, dims, par_s, h5_error)
 
@@ -2408,8 +2387,6 @@ contains
     call h5dread_f(par_d, H5T_NATIVE_INTEGER, data, dims, h5_error)
 
     call h5sclose_f(par_s, h5_error)
-
-    if (rank>0) deallocate(dims)
 
        
   end subroutine h5md_read_par_i2
@@ -2425,12 +2402,7 @@ contains
     double precision, intent(out) :: data(:)
 
     integer(HID_T) :: par_d, par_s
-    integer(HSIZE_T), allocatable :: dims(:)
-    integer :: rank
-
-    rank = 1
-    if (rank>0) allocate(dims(rank))
-
+    integer(HSIZE_T) :: dims(1)
     dims = shape(data)
     call h5screate_simple_f(1, dims, par_s, h5_error)
 
@@ -2439,8 +2411,6 @@ contains
     call h5dread_f(par_d, H5T_NATIVE_DOUBLE, data, dims, h5_error)
 
     call h5sclose_f(par_s, h5_error)
-
-    if (rank>0) deallocate(dims)
 
        
   end subroutine h5md_read_par_d1
@@ -2456,12 +2426,7 @@ contains
     double precision, intent(out) :: data
 
     integer(HID_T) :: par_d, par_s
-    integer(HSIZE_T), allocatable :: dims(:)
-    integer :: rank
-
-    rank = 0
-    if (rank>0) allocate(dims(rank))
-
+    integer(HSIZE_T) :: dims(1)
     call h5screate_f(H5S_SCALAR_F, par_s, h5_error)
 
     call h5dopen_f(file_id, 'parameters/'//name, par_d, h5_error)
@@ -2469,8 +2434,6 @@ contains
     call h5dread_f(par_d, H5T_NATIVE_DOUBLE, data, dims, h5_error)
 
     call h5sclose_f(par_s, h5_error)
-
-    if (rank>0) deallocate(dims)
 
        
   end subroutine h5md_read_par_ds
@@ -2486,12 +2449,7 @@ contains
     double precision, intent(out) :: data(:,:)
 
     integer(HID_T) :: par_d, par_s
-    integer(HSIZE_T), allocatable :: dims(:)
-    integer :: rank
-
-    rank = 2
-    if (rank>0) allocate(dims(rank))
-
+    integer(HSIZE_T) :: dims(2)
     dims = shape(data)
     call h5screate_simple_f(2, dims, par_s, h5_error)
 
@@ -2500,8 +2458,6 @@ contains
     call h5dread_f(par_d, H5T_NATIVE_DOUBLE, data, dims, h5_error)
 
     call h5sclose_f(par_s, h5_error)
-
-    if (rank>0) deallocate(dims)
 
        
   end subroutine h5md_read_par_d2
@@ -2517,8 +2473,7 @@ contains
     logical, intent(out) :: data(:)
 
     integer(HID_T) :: par_d, par_s
-    integer(HSIZE_T), allocatable :: dims(:)
-    integer :: rank
+    integer(HSIZE_T) :: dims(1)
     integer, allocatable :: data_int(:)
     allocate(data_int(size(data)))
     where (data)
@@ -2526,10 +2481,6 @@ contains
     elsewhere
         data_int=0
     endwhere
-
-
-    rank = 1
-    if (rank>0) allocate(dims(rank))
 
     dims = shape(data)
     call h5screate_simple_f(1, dims, par_s, h5_error)
@@ -2547,8 +2498,6 @@ contains
 
     call h5sclose_f(par_s, h5_error)
 
-    if (rank>0) deallocate(dims)
-
        
   end subroutine h5md_read_par_l1
 
@@ -2563,18 +2512,13 @@ contains
     logical, intent(out) :: data
 
     integer(HID_T) :: par_d, par_s
-    integer(HSIZE_T), allocatable :: dims(:)
-    integer :: rank
+    integer(HSIZE_T) :: dims(1)
     integer :: data_int
     if (data) then
         data_int = 1
     else
         data_int = 0
     end if
-
-
-    rank = 0
-    if (rank>0) allocate(dims(rank))
 
     call h5screate_f(H5S_SCALAR_F, par_s, h5_error)
 
@@ -2590,8 +2534,6 @@ contains
 
     call h5sclose_f(par_s, h5_error)
 
-    if (rank>0) deallocate(dims)
-
        
   end subroutine h5md_read_par_ls
 
@@ -2606,8 +2548,7 @@ contains
     logical, intent(out) :: data(:,:)
 
     integer(HID_T) :: par_d, par_s
-    integer(HSIZE_T), allocatable :: dims(:)
-    integer :: rank
+    integer(HSIZE_T) :: dims(2)
     integer, allocatable :: data_int(:,:)
     allocate(data_int(size(data,dim=1),size(data,dim=2)))
     where (data)
@@ -2615,10 +2556,6 @@ contains
     elsewhere
         data_int=0
     endwhere
-
-
-    rank = 2
-    if (rank>0) allocate(dims(rank))
 
     dims = shape(data)
     call h5screate_simple_f(2, dims, par_s, h5_error)
@@ -2635,8 +2572,6 @@ contains
     deallocate(data_int)
 
     call h5sclose_f(par_s, h5_error)
-
-    if (rank>0) deallocate(dims)
 
        
   end subroutine h5md_read_par_l2
