@@ -595,17 +595,14 @@ contains
     type(h5md_t), intent(inout) :: ID
     character(len=*), intent(in) :: h5md_group, full_name
 
-    character(len=11) :: d_name
-    
-    if (h5md_group .eq. 'trajectory') then
-       d_name = 'coordinates'
-    else if (h5md_group .eq. 'observables') then
-       d_name = 'samples'
-    else
+    if ( (h5md_group .ne. 'trajectory') &
+         .and. &
+         (h5md_group .ne. 'observables') &
+         ) then
        write(*,*) h5md_group, ' is not accepted in h5md_open_ID'
        stop
     end if
-    call h5dopen_f(file_ID, h5md_group//'/'//full_name//'/'//trim(d_name),ID% d_id, h5_error)
+    call h5dopen_f(file_ID, h5md_group//'/'//full_name//'/value',ID% d_id, h5_error)
     call h5dopen_f(file_ID, h5md_group//'/'//full_name//'/step',ID% s_id, h5_error)
     call h5dopen_f(file_ID, h5md_group//'/'//full_name//'/time',ID% t_id, h5_error)
        
