@@ -327,7 +327,7 @@ contains
   !! time dependent, if set to .false., 'species' will not possess the time
   !! dimension
   !! @param link_from is the name of another trajectory from which the time can be copied
-  !! @param compress Switch to toggle SZIP compression.
+  !! @param compress Switch to toggle GZIP compression.
   !! @param force_kind Force the supplied kind, "integer" or "double", for the dataset.
   !! @param force_rank Force the dataset rank to 1, 2 or 3.
   subroutine h5md_add_trajectory_data(file_id, trajectory_name, N, D, ID, group_name, species_react, &
@@ -347,8 +347,8 @@ contains
     integer :: rank
     integer(HSIZE_T) :: dims(3), max_dims(3), chunk_dims(3)
     integer(HID_T) :: traj_g_id, g_id, s_id, plist
-    logical :: sz_avail, compress_var
-    integer :: filter_info, sz_encode
+    logical :: gzip_avail, compress_var
+    integer :: filter_info, gzip_encode
 
     if (.not.present(force_kind)) then
     if ( (trajectory_name .ne. 'position') .and. (trajectory_name .ne. 'velocity') &
@@ -407,27 +407,27 @@ contains
     call h5screate_simple_f(rank, dims, s_id, h5_error, max_dims)
     call h5pcreate_f(H5P_DATASET_CREATE_F, plist, h5_error)
     if (compress_var) then
-       call h5zfilter_avail_f(H5Z_FILTER_SZIP_F,sz_avail, h5_error)
-       if (.not.sz_avail) stop 'SZIP filter not available'
-       CALL h5zget_filter_info_f(H5Z_FILTER_SZIP_F, filter_info, h5_error)
-       sz_encode = IOR(H5Z_FILTER_ENCODE_ENABLED_F,H5Z_FILTER_DECODE_ENABLED_F)
-       if (sz_encode .ne. filter_info) stop 'SZIP filter not available for encoding and decoding'
-       call h5pset_szip_f(plist, H5_SZIP_NN_OM_F, 8, h5_error)
+       call h5zfilter_avail_f(H5Z_FILTER_DEFLATE_F,gzip_avail, h5_error)
+       if (.not.gzip_avail) stop 'GZIP filter not available'
+       CALL h5zget_filter_info_f(H5Z_FILTER_DEFLATE_F, filter_info, h5_error)
+       gzip_encode = IOR(H5Z_FILTER_ENCODE_ENABLED_F,H5Z_FILTER_DECODE_ENABLED_F)
+       if (gzip_encode .ne. filter_info) stop 'GZIP filter not available for encoding and decoding'
+       call h5pset_deflate_f(plist, 6, h5_error)
     end if
     call h5pset_chunk_f(plist, rank, chunk_dims, h5_error)
     if (present(force_kind)) then
        if (force_kind .eq. 'integer') then
-          call h5dcreate_f(g_id, 'coordinates', H5T_NATIVE_INTEGER, s_id, ID% d_id, h5_error, plist)
+          call h5dcreate_f(g_id, 'value', H5T_NATIVE_INTEGER, s_id, ID% d_id, h5_error, plist)
        else if (force_kind .eq. 'double') then
-          call h5dcreate_f(g_id, 'coordinates', H5T_NATIVE_DOUBLE, s_id, ID% d_id, h5_error, plist)
+          call h5dcreate_f(g_id, 'value', H5T_NATIVE_DOUBLE, s_id, ID% d_id, h5_error, plist)
        else
           write(*,*) 'non supported force_kind ', force_kind
        end if
     else
     if (trajectory_name .ne. 'species' .and. trajectory_name .ne. 'jumps') then
-       call h5dcreate_f(g_id, 'coordinates', H5T_NATIVE_DOUBLE, s_id, ID% d_id, h5_error, plist)
+       call h5dcreate_f(g_id, 'value', H5T_NATIVE_DOUBLE, s_id, ID% d_id, h5_error, plist)
     else
-       call h5dcreate_f(g_id, 'coordinates', H5T_NATIVE_INTEGER, s_id, ID% d_id, h5_error, plist)
+       call h5dcreate_f(g_id, 'value', H5T_NATIVE_INTEGER, s_id, ID% d_id, h5_error, plist)
     end if
     end if
     call h5pclose_f(plist, h5_error)
