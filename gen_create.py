@@ -1,5 +1,12 @@
 #!/usr/bin/env python
 
+# Copyright 2011-2013 Pierre de Buyl
+#
+# This file is part of f90h5md
+#
+# f90h5md is free software and is licensed under the modified BSD license (see
+# LICENSE file).
+
 types = dict()
 types['i'] = 'integer'
 types['d'] = 'double precision'
