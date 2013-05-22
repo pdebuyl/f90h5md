@@ -61,7 +61,7 @@ for t_k,t_v in types.iteritems():
     chunk_dims(%i) = 128
     call h5pcreate_f(H5P_DATASET_CREATE_F, plist, h5_error)
     call h5pset_chunk_f(plist, rank, chunk_dims, h5_error)
-    call h5dcreate_f(g_id, 'samples', %s, file_s, ID%% d_id, h5_error, plist)
+    call h5dcreate_f(g_id, 'value', %s, file_s, ID%% d_id, h5_error, plist)
     call h5pclose_f(plist, h5_error)
     call h5sclose_f(file_s, h5_error)
 

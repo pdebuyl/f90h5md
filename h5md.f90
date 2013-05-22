@@ -768,7 +768,7 @@ contains
     chunk_dims(2) = 128
     call h5pcreate_f(H5P_DATASET_CREATE_F, plist, h5_error)
     call h5pset_chunk_f(plist, rank, chunk_dims, h5_error)
-    call h5dcreate_f(g_id, 'samples', H5T_NATIVE_INTEGER, file_s, ID% d_id, h5_error, plist)
+    call h5dcreate_f(g_id, 'value', H5T_NATIVE_INTEGER, file_s, ID% d_id, h5_error, plist)
     call h5pclose_f(plist, h5_error)
     call h5sclose_f(file_s, h5_error)
 
@@ -818,7 +818,7 @@ contains
     chunk_dims(1) = 128
     call h5pcreate_f(H5P_DATASET_CREATE_F, plist, h5_error)
     call h5pset_chunk_f(plist, rank, chunk_dims, h5_error)
-    call h5dcreate_f(g_id, 'samples', H5T_NATIVE_INTEGER, file_s, ID% d_id, h5_error, plist)
+    call h5dcreate_f(g_id, 'value', H5T_NATIVE_INTEGER, file_s, ID% d_id, h5_error, plist)
     call h5pclose_f(plist, h5_error)
     call h5sclose_f(file_s, h5_error)
 
@@ -873,7 +873,7 @@ contains
     chunk_dims(3) = 128
     call h5pcreate_f(H5P_DATASET_CREATE_F, plist, h5_error)
     call h5pset_chunk_f(plist, rank, chunk_dims, h5_error)
-    call h5dcreate_f(g_id, 'samples', H5T_NATIVE_INTEGER, file_s, ID% d_id, h5_error, plist)
+    call h5dcreate_f(g_id, 'value', H5T_NATIVE_INTEGER, file_s, ID% d_id, h5_error, plist)
     call h5pclose_f(plist, h5_error)
     call h5sclose_f(file_s, h5_error)
 
@@ -928,7 +928,7 @@ contains
     chunk_dims(4) = 128
     call h5pcreate_f(H5P_DATASET_CREATE_F, plist, h5_error)
     call h5pset_chunk_f(plist, rank, chunk_dims, h5_error)
-    call h5dcreate_f(g_id, 'samples', H5T_NATIVE_INTEGER, file_s, ID% d_id, h5_error, plist)
+    call h5dcreate_f(g_id, 'value', H5T_NATIVE_INTEGER, file_s, ID% d_id, h5_error, plist)
     call h5pclose_f(plist, h5_error)
     call h5sclose_f(file_s, h5_error)
 
@@ -983,7 +983,7 @@ contains
     chunk_dims(5) = 128
     call h5pcreate_f(H5P_DATASET_CREATE_F, plist, h5_error)
     call h5pset_chunk_f(plist, rank, chunk_dims, h5_error)
-    call h5dcreate_f(g_id, 'samples', H5T_NATIVE_INTEGER, file_s, ID% d_id, h5_error, plist)
+    call h5dcreate_f(g_id, 'value', H5T_NATIVE_INTEGER, file_s, ID% d_id, h5_error, plist)
     call h5pclose_f(plist, h5_error)
     call h5sclose_f(file_s, h5_error)
 
@@ -1038,7 +1038,7 @@ contains
     chunk_dims(2) = 128
     call h5pcreate_f(H5P_DATASET_CREATE_F, plist, h5_error)
     call h5pset_chunk_f(plist, rank, chunk_dims, h5_error)
-    call h5dcreate_f(g_id, 'samples', H5T_NATIVE_DOUBLE, file_s, ID% d_id, h5_error, plist)
+    call h5dcreate_f(g_id, 'value', H5T_NATIVE_DOUBLE, file_s, ID% d_id, h5_error, plist)
     call h5pclose_f(plist, h5_error)
     call h5sclose_f(file_s, h5_error)
 
@@ -1088,7 +1088,7 @@ contains
     chunk_dims(1) = 128
     call h5pcreate_f(H5P_DATASET_CREATE_F, plist, h5_error)
     call h5pset_chunk_f(plist, rank, chunk_dims, h5_error)
-    call h5dcreate_f(g_id, 'samples', H5T_NATIVE_DOUBLE, file_s, ID% d_id, h5_error, plist)
+    call h5dcreate_f(g_id, 'value', H5T_NATIVE_DOUBLE, file_s, ID% d_id, h5_error, plist)
     call h5pclose_f(plist, h5_error)
     call h5sclose_f(file_s, h5_error)
 
@@ -1143,7 +1143,7 @@ contains
     chunk_dims(3) = 128
     call h5pcreate_f(H5P_DATASET_CREATE_F, plist, h5_error)
     call h5pset_chunk_f(plist, rank, chunk_dims, h5_error)
-    call h5dcreate_f(g_id, 'samples', H5T_NATIVE_DOUBLE, file_s, ID% d_id, h5_error, plist)
+    call h5dcreate_f(g_id, 'value', H5T_NATIVE_DOUBLE, file_s, ID% d_id, h5_error, plist)
     call h5pclose_f(plist, h5_error)
     call h5sclose_f(file_s, h5_error)
 
@@ -1198,7 +1198,7 @@ contains
     chunk_dims(4) = 128
     call h5pcreate_f(H5P_DATASET_CREATE_F, plist, h5_error)
     call h5pset_chunk_f(plist, rank, chunk_dims, h5_error)
-    call h5dcreate_f(g_id, 'samples', H5T_NATIVE_DOUBLE, file_s, ID% d_id, h5_error, plist)
+    call h5dcreate_f(g_id, 'value', H5T_NATIVE_DOUBLE, file_s, ID% d_id, h5_error, plist)
     call h5pclose_f(plist, h5_error)
     call h5sclose_f(file_s, h5_error)
 
@@ -1253,7 +1253,7 @@ contains
     chunk_dims(5) = 128
     call h5pcreate_f(H5P_DATASET_CREATE_F, plist, h5_error)
     call h5pset_chunk_f(plist, rank, chunk_dims, h5_error)
-    call h5dcreate_f(g_id, 'samples', H5T_NATIVE_DOUBLE, file_s, ID% d_id, h5_error, plist)
+    call h5dcreate_f(g_id, 'value', H5T_NATIVE_DOUBLE, file_s, ID% d_id, h5_error, plist)
     call h5pclose_f(plist, h5_error)
     call h5sclose_f(file_s, h5_error)
 
