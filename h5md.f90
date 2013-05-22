@@ -148,10 +148,10 @@ contains
   !! also creates 'trajectory', 'observables' and 'parameters' groups.
   !! @param file_id the returned hdf5 location of the file.
   !! @param filename name of the file.
-  !! @param prog_name name that appears in the 'creator' global attribute.
-  subroutine h5md_create_file(file_id, filename, prog_name)
+  !! @param creator name that appears in the 'creator' global attribute.
+  subroutine h5md_create_file(file_id, filename, author, creator, creator_version)
     integer(HID_T), intent(out) :: file_id
-    character(len=*), intent(in) :: filename, prog_name
+    character(len=*), intent(in) :: filename, author, creator, creator_version
 
     integer :: h5md_version(2), creation_time, val(8)
     integer(HID_T) :: h5_g_id, g_id
@@ -163,13 +163,35 @@ contains
 
     call h5gcreate_f(file_id, 'h5md', h5_g_id, h5_error)
 
+    ! write author attribute
+    call h5screate_f(H5S_SCALAR_F, a_space, h5_error)
+    a_size(1) = len(author)
+    call h5tcopy_f(H5T_NATIVE_CHARACTER, a_type, h5_error)
+    call h5tset_size_f(a_type, a_size(1), h5_error)
+    call h5acreate_f(h5_g_id, 'author', a_type, a_space, a_id, h5_error)
+    call h5awrite_f(a_id, a_type, author, a_size, h5_error)
+    call h5aclose_f(a_id, h5_error)
+    call h5sclose_f(a_space, h5_error)
+    call h5tclose_f(a_type, h5_error)
+
     ! write creator attribute
     call h5screate_f(H5S_SCALAR_F, a_space, h5_error)
-    a_size(1) = len(prog_name)
+    a_size(1) = len(creator)
     call h5tcopy_f(H5T_NATIVE_CHARACTER, a_type, h5_error)
     call h5tset_size_f(a_type, a_size(1), h5_error)
     call h5acreate_f(h5_g_id, 'creator', a_type, a_space, a_id, h5_error)
-    call h5awrite_f(a_id, a_type, prog_name, a_size, h5_error)
+    call h5awrite_f(a_id, a_type, creator, a_size, h5_error)
+    call h5aclose_f(a_id, h5_error)
+    call h5sclose_f(a_space, h5_error)
+    call h5tclose_f(a_type, h5_error)
+
+    ! write creator_version attribute
+    call h5screate_f(H5S_SCALAR_F, a_space, h5_error)
+    a_size(1) = len(creator_version)
+    call h5tcopy_f(H5T_NATIVE_CHARACTER, a_type, h5_error)
+    call h5tset_size_f(a_type, a_size(1), h5_error)
+    call h5acreate_f(h5_g_id, 'creator_version', a_type, a_space, a_id, h5_error)
+    call h5awrite_f(a_id, a_type, creator_version, a_size, h5_error)
     call h5aclose_f(a_id, h5_error)
     call h5sclose_f(a_space, h5_error)
     call h5tclose_f(a_type, h5_error)
