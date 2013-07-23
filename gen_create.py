@@ -33,20 +33,29 @@ for t_k,t_v in types.iteritems():
   !! @param ID Resulting h5md_t variable
   !! @param data The data that will fit into the observable.
   !! @param link_from Indicates if the step and time for this observable should be linked from another one.
+  !! @param override_obs Indicates if the data should be stored outside of /observables.
   !! @private""" 
         s+="""
-  subroutine h5md_create_obs_%s%s(file_id, name, ID, data, link_from)
+  subroutine h5md_create_obs_%s%s(file_id, name, ID, data, link_from, override_obs)
     integer(HID_T), intent(inout) :: file_id
     character(len=*), intent(in) :: name
     type(h5md_t), intent(out) :: ID
     %s, intent(in) :: data%s
     character(len=*), intent(in), optional :: link_from
+    character(len=*), intent(in), optional :: override_obs
 
     integer(HID_T) :: file_s, plist, g_id
     integer(HSIZE_T), allocatable :: dims(:), max_dims(:), chunk_dims(:)
     integer :: rank
+    character(len=64) :: g_name
 
-    call h5gcreate_f(file_id, 'observables/'//name, g_id, h5_error)
+    if (present(override_obs)) then
+      g_name = override_obs
+    else
+      g_name = 'observables'
+    end if
+
+    call h5gcreate_f(file_id, trim(g_name)//'/'//name, g_id, h5_error)
 
     rank = %i
     allocate(dims(rank)) ; allocate(max_dims(rank)) ; allocate(chunk_dims(rank))
@@ -75,8 +84,8 @@ for t_k,t_v in types.iteritems():
     deallocate(dims) ; deallocate(max_dims) ; deallocate(chunk_dims)
 
     if (present(link_from)) then
-       call h5lcreate_hard_f(file_id, 'observables/'//link_from//'/step', g_id, 'step', h5_error)
-       call h5lcreate_hard_f(file_id, 'observables/'//link_from//'/time', g_id, 'time', h5_error)
+       call h5lcreate_hard_f(file_id, trim(g_name)//'/'//link_from//'/step', g_id, 'step', h5_error)
+       call h5lcreate_hard_f(file_id, trim(g_name)//'/'//link_from//'/time', g_id, 'time', h5_error)
     else
        call h5md_create_step_time(g_id)
     end if
