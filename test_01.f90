@@ -6,6 +6,7 @@
 !! LICENSE file).
 
 program h5md_test_01
+  use hdf5
   use h5md
   implicit none
 

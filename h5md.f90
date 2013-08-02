@@ -11,6 +11,14 @@ module h5md
   use hdf5
   implicit none
 
+  private
+  public :: h5_error, h5md_t, &
+       h5md_create_obs, h5md_write_obs, h5md_read_obs, &
+       h5md_write_par, h5md_read_par, &
+       h5md_create_file, h5md_open_file, h5md_create_trajectory_group, &
+       h5md_add_trajectory_data, h5md_set_box_size, h5md_open_trajectory, &
+       h5md_open_ID, h5md_close_ID
+
   !> Global variable to keep the error from HDF5 instructions.
   integer :: h5_error
 
