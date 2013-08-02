@@ -11,7 +11,8 @@ program h5md_test_01
 
   integer(HID_T) :: file_id
   type(h5md_t) :: pos_ID, vel_ID, kin_ID, extra_ID, fourd_ID
-  double precision :: r(3,5), v(3,5), t, r_read(3,5)
+  integer(HSIZE_T), parameter :: D = 3, N = 5
+  double precision :: r(D,N), v(D,N), t, r_read(D,N)
   double precision :: fourd(3,2,32,32), fourd_read(3,2,32,32)
   integer :: i, j, i_t, i_t_read
   integer :: mylist(10), mylist_read(10)
@@ -36,9 +37,9 @@ program h5md_test_01
 
   call h5md_create_trajectory_group(file_id, 'solvent')
 
-  call h5md_add_trajectory_data(file_id, 'position', 5, 3, pos_ID, group_name='solvent', compress=.true.)
-  call h5md_add_trajectory_data(file_id, 'velocity', 5, 3, vel_ID, group_name='solvent', link_from='position')
-  call h5md_add_trajectory_data(file_id, 'so_do_reac', 5, 3, extra_ID, group_name='solvent',force_kind='integer',force_rank=2)
+  call h5md_add_trajectory_data(file_id, 'position', N, D, pos_ID, group_name='solvent', compress=.true.)
+  call h5md_add_trajectory_data(file_id, 'velocity', N, D, vel_ID, group_name='solvent', link_from='position')
+  call h5md_add_trajectory_data(file_id, 'so_do_reac', N, D, extra_ID, group_name='solvent',force_kind='integer',force_rank=2)
   
   call h5md_create_obs(file_id, 'kinetic', kin_ID, kin)
   call h5md_create_obs(file_id, 'fourd', fourd_ID, fourd)
